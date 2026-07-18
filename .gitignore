@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.venv/
+.venv.bak/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+dist/
+build/
+
+# Environment / secrets
+.env
+.env.local
+
+# Editor / OS / agent (local only — never commit)
+.vscode/
+.idea/
+.cursor/
+*.swp
+*.swo
+*~
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Local agent notes / private planning drafts
+/AGENTS.md
+docs/CONCEPT.md
+**/CONCEPT.md
+
+# Node / Next.js
+node_modules/
+web/.next/
+web/out/
+web/.turbo/
+*.tsbuildinfo
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# Logs
+*.log
+
+# Local / Docker volumes (if ever bind-mounted)
+instance/
+data/

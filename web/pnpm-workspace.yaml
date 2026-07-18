@@ -1,0 +1,11 @@
+# Single-package project; settings live here (pnpm 11+).
+packages:
+  - "."
+
+# Lifecycle scripts are denied by default. Review each blocked package and set
+# true only when its native build is required for install/tsc/next build.
+# sharp: Next optional image optimizer — unused (no next/image; static export).
+# unrs-resolver: eslint-config-next native resolver — unused by tsc/next build.
+allowBuilds:
+  sharp: false
+  unrs-resolver: false

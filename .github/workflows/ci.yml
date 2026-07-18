@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: uv sync --frozen
+      - run: uv run ruff check
+      - run: uv run ruff format --check
+      - run: uv run mypy --strict src/
+      - run: uv run pytest -m "not integration"
+
+  integration:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: uv sync --frozen
+      - name: Start compose stack
+        working-directory: .
+        run: docker compose -f deploy/compose.dev.yml up -d --wait
+      - name: Configure env
+        working-directory: .
+        run: |
+          set -a
+          # shellcheck disable=SC1091
+          source .env.example
+          set +a
+          echo "EXPLORER_NETWORK=$EXPLORER_NETWORK" >> "$GITHUB_ENV"
+          echo "EXPLORER_RPC_URL=$EXPLORER_RPC_URL" >> "$GITHUB_ENV"
+          echo "EXPLORER_RPC_USER=$EXPLORER_RPC_USER" >> "$GITHUB_ENV"
+          echo "EXPLORER_RPC_PASSWORD=$EXPLORER_RPC_PASSWORD" >> "$GITHUB_ENV"
+          echo "EXPLORER_ZMQ_RAWBLOCK=$EXPLORER_ZMQ_RAWBLOCK" >> "$GITHUB_ENV"
+          echo "EXPLORER_ZMQ_HASHTX=$EXPLORER_ZMQ_HASHTX" >> "$GITHUB_ENV"
+          echo "EXPLORER_DB_URL=$EXPLORER_DB_URL" >> "$GITHUB_ENV"
+          echo "EXPLORER_DB_SCHEMA=$EXPLORER_DB_SCHEMA" >> "$GITHUB_ENV"
+          echo "EXPLORER_SYNC_POLL_INTERVAL_SEC=$EXPLORER_SYNC_POLL_INTERVAL_SEC" >> "$GITHUB_ENV"
+          echo "EXPLORER_MAX_REORG_DEPTH=$EXPLORER_MAX_REORG_DEPTH" >> "$GITHUB_ENV"
+      - name: Migrate database
+        run: uv run alembic upgrade head
+      - name: Run integration tests
+        run: uv run pytest -m integration -v
+      - name: Compose logs on failure
+        if: failure()
+        working-directory: .
+        run: docker compose -f deploy/compose.dev.yml logs --tail=200
+      - name: Tear down compose
+        if: always()
+        working-directory: .
+        run: docker compose -f deploy/compose.dev.yml down -v
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.14.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm tsc --noEmit
+      - run: pnpm next build
+
+  compose-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose -f deploy/compose.dev.yml config -q

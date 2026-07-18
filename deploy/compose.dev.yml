@@ -1,0 +1,72 @@
+# Local development stack: Cyberyen regtest node + PostgreSQL 18.
+# No API / indexer services in phase 1.
+
+services:
+  cyberyend-regtest:
+    build:
+      context: ..
+      dockerfile: deploy/docker/cyberyend.Dockerfile
+      platforms:
+        - linux/amd64
+    platform: linux/amd64
+    command:
+      - -regtest
+      - -txindex=1
+      - -server=1
+      - -rpcbind=0.0.0.0
+      # dev-only: regtest
+      - -rpcallowip=0.0.0.0/0
+      - -rpcuser=dev
+      - -rpcpassword=dev
+      - -zmqpubrawblock=tcp://0.0.0.0:28332
+      - -zmqpubhashtx=tcp://0.0.0.0:28333
+      - -fallbackfee=0.0001
+      # Height-based BIP9 (start=0,timeout=0): auxpow version bits never satisfy
+      # VERSIONBITS_TOP_BITS, so signal count stays 0; height timeout still
+      # forces LOCKED_IN → ACTIVE (~432 blocks, same as Litecoin regtest).
+      - -vbparams=mweb:0:0:0:0
+      - -datadir=/data
+    volumes:
+      - cyberyend-regtest-data:/data
+    ports:
+      - "18439:18439"
+      - "28332:28332"
+      - "28333:28333"
+    healthcheck:
+      # Spec: cyberyen-cli -regtest getblockchaininfo; credentials required when -rpcuser is set
+      test:
+        [
+          "CMD",
+          "cyberyen-cli",
+          "-regtest",
+          "-datadir=/data",
+          "-rpcuser=dev",
+          "-rpcpassword=dev",
+          "getblockchaininfo",
+        ]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 20s
+
+  postgres:
+    # postgres:18 pinned by digest (multi-arch index)
+    image: postgres@sha256:32ca0af8e77bfb8c6610c488e4691f83f972a3e9e64d3b02facf3ab111ad5500
+    environment:
+      POSTGRES_USER: explorer
+      POSTGRES_PASSWORD: explorer
+      POSTGRES_DB: explorer
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U explorer -d explorer"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  cyberyend-regtest-data:
+  postgres-data:

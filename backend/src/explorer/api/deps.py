@@ -32,4 +32,15 @@ def get_network_context(request: Request, network: str) -> NetworkContext:
     return ctx
 
 
+def get_default_network_context(request: Request) -> NetworkContext:
+    """Legacy adapters target the first configured API network."""
+    network = get_api_settings(request).api_networks[0]
+    contexts = get_contexts(request)
+    ctx = contexts.get(network)
+    if ctx is None:
+        raise_problem(404, "Not Found", f"Unknown network: {network}")
+    return ctx
+
+
 NetworkCtx = Annotated[NetworkContext, Depends(get_network_context)]
+DefaultNetworkCtx = Annotated[NetworkContext, Depends(get_default_network_context)]

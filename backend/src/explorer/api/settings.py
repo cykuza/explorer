@@ -43,6 +43,7 @@ class ApiSettings(BaseSettings):
     api_max_lag: int = Field(default=10, ge=0)
     api_host: str = Field(default="0.0.0.0")
     api_port: int = Field(default=8080, ge=1, le=65535)
+    api_sse_poll_sec: float = Field(default=2, gt=0)
 
     # Populated by model_validator from EXPLORER_<NETWORK>_RPC_* env vars.
     network_rpc: dict[Network, NetworkRpcConfig] = Field(

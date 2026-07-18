@@ -10,9 +10,11 @@ from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from explorer.api.context import NetworkContext
+from explorer.api.legacy import router as legacy_router
 from explorer.api.problems import register_exception_handlers
 from explorer.api.routes import health_router, router
 from explorer.api.settings import ApiSettings
+from explorer.api.sse import router as sse_router
 from explorer.config import Network
 from explorer.rpc import RpcClient
 
@@ -81,6 +83,8 @@ def create_app(
     )
     register_exception_handlers(app)
     app.include_router(router, prefix="/api/v1")
+    app.include_router(sse_router, prefix="/api/v1")
+    app.include_router(legacy_router, prefix="/api")
     app.include_router(health_router)
 
     if settings is not None:

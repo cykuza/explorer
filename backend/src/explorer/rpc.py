@@ -27,6 +27,16 @@ class RpcHttpError(Exception):
         super().__init__(f"RPC HTTP {status_code}: {detail}")
 
 
+def is_rpc_connection_error(exc: BaseException) -> bool:
+    """True for transport/DNS failures (retryable), not HTTP/RPC application errors.
+
+    ``RpcClient`` maps ``httpx`` connect/timeout errors to ``RpcHttpError`` with
+    ``status_code == 0``. JSON-RPC ``RpcError`` and non-zero HTTP failures are
+    not connection errors.
+    """
+    return isinstance(exc, RpcHttpError) and exc.status_code == 0
+
+
 def _parse_rpc_body(text: str) -> dict[str, Any]:
     """Parse RPC JSON with Decimal for fractional numbers (never float)."""
     value = json.loads(text, parse_float=Decimal)

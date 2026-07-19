@@ -20,9 +20,12 @@ from explorer.indexer.apply import (
 from explorer.indexer.reorg import ReorgTooDeepError, find_fork_height
 from explorer.indexer.zmq_sub import rawblock_notifications
 from explorer.logging_setup import log_extra
-from explorer.rpc import RpcClient
+from explorer.rpc import RpcClient, RpcHttpError, is_rpc_connection_error
 
 logger = logging.getLogger(__name__)
+
+_NODE_RETRY_INITIAL_SEC = 1.0
+_NODE_RETRY_MAX_SEC = 60.0
 
 
 class Syncer:
@@ -169,12 +172,47 @@ class Syncer:
         """Wake the sync loop (ZMQ or poll)."""
         self._wake.set()
 
+    async def _tip_walk_with_node_retry(self) -> int:
+        """Call ``tip_walk_once``, retrying only connection-class RPC failures.
+
+        DNS/connect/timeout (``RpcHttpError`` with status 0) use exponential
+        backoff (1s → 60s). Other RPC/HTTP errors propagate immediately.
+        """
+        attempt = 0
+        delay = _NODE_RETRY_INITIAL_SEC
+        while True:
+            try:
+                applied = await self.tip_walk_once()
+            except RpcHttpError as exc:
+                if not is_rpc_connection_error(exc):
+                    raise
+                attempt += 1
+                log_extra(
+                    logger,
+                    logging.WARNING,
+                    "node_unreachable",
+                    attempt=attempt,
+                    detail=exc.detail,
+                    sleep_sec=delay,
+                )
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, _NODE_RETRY_MAX_SEC)
+                continue
+            if attempt > 0:
+                log_extra(
+                    logger,
+                    logging.INFO,
+                    "node_recovered",
+                    attempts=attempt,
+                )
+            return applied
+
     async def run(self, *, once: bool = False) -> None:
         """Run backfill then optionally stay on ZMQ+poll until cancelled.
 
         If ``once`` is True, only tip-walk to current tip and return (for tests).
         """
-        applied = await self.tip_walk_once()
+        applied = await self._tip_walk_with_node_retry()
         log_extra(logger, logging.INFO, "backfill_done", blocks_applied=applied)
         if once:
             return
@@ -187,7 +225,7 @@ class Syncer:
                 await self._wake.wait()
                 self._wake.clear()
                 try:
-                    await self.tip_walk_once()
+                    await self._tip_walk_with_node_retry()
                 except Exception:
                     logger.exception("tip_walk_failed")
         finally:

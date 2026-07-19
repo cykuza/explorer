@@ -336,26 +336,6 @@ jobs:
             ssh-keyscan -p "${PORT}" -t ed25519 "${DEPLOY_SSH_HOST}" >> ~/.ssh/known_hosts
           fi
           chmod 644 ~/.ssh/known_hosts
-      - name: Ensure /opt/explorer is writable
-        if: steps.gate.outputs.ready == 'true'
-        env:
-          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
-          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
-          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
-        run: |
-          PORT="${DEPLOY_SSH_PORT:-22}"
-          ssh -p "${PORT}" "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" bash -s <<'EOF'
-          set -euo pipefail
-          if [ ! -d /opt/explorer ]; then
-            echo "::error::/opt/explorer does not exist. On the server (as root): mkdir -p /opt/explorer && chown ${USER}:${USER} /opt/explorer"
-            exit 1
-          fi
-          if [ ! -w /opt/explorer ]; then
-            echo "::error::/opt/explorer is not writable by ${USER}. On the server (as root): chown -R ${USER}:${USER} /opt/explorer"
-            exit 1
-          fi
-          mkdir -p /opt/explorer/nginx
-          EOF
       - name: Copy deploy files
         if: steps.gate.outputs.ready == 'true'
         env:
@@ -370,6 +350,58 @@ jobs:
             deploy/README.md \
             deploy/nginx \
             "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}:/opt/explorer/"
+      - name: Host preflight
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+        run: |
+          PORT="${DEPLOY_SSH_PORT:-22}"
+          ssh -p "${PORT}" "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" bash -s <<'EOF'
+          set -euo pipefail
+          fail() { echo "::error::$*" >&2; exit 1; }
+
+          [ -d /opt/explorer ] || fail "/opt/explorer missing. As root: mkdir -p /opt/explorer && chown ${USER}:${USER} /opt/explorer"
+          [ -w /opt/explorer ] || fail "/opt/explorer not writable by ${USER}. As root: chown -R ${USER}:${USER} /opt/explorer"
+          [ -f /opt/explorer/.env.prod ] || fail "/opt/explorer/.env.prod missing (copy from .env.prod.example and set secrets)"
+          if grep -qE 'CHANGE_ME' /opt/explorer/.env.prod; then
+            fail "/opt/explorer/.env.prod still contains CHANGE_ME — set real passwords"
+          fi
+          command -v docker >/dev/null || fail "docker not installed or not on PATH for ${USER}"
+          docker info >/dev/null 2>&1 || fail "cannot talk to Docker daemon (add ${USER} to the docker group?)"
+          docker compose version >/dev/null 2>&1 || fail "docker compose plugin missing"
+          mkdir -p /opt/explorer/nginx
+
+          cd /opt/explorer
+          # Ports this stack publishes on the host. Busy OK only if already held by
+          # this compose project (redeploy); anything else must be stopped first.
+          check_host_port() {
+            local port="$1"
+            local our cids
+            our="$(docker compose -f compose.prod.yml --env-file .env.prod ps -aq 2>/dev/null | tr '\n' ' ')"
+            cids="$(docker ps --filter "publish=${port}" --format '{{.ID}}' 2>/dev/null || true)"
+            if [ -n "${cids}" ]; then
+              for cid in ${cids}; do
+                case " ${our} " in
+                  *" ${cid} "*) ;;
+                  *)
+                    fail "host port ${port} is used by container ${cid} ($(docker inspect -f '{{.Name}}' "${cid}")), not this compose project — stop it first"
+                    ;;
+                esac
+              done
+              return 0
+            fi
+            if ss -tlnH 2>/dev/null | awk '{print $4}' | grep -Eq "[:.]${port}\$"; then
+              fail "host port ${port} is already in use (not by this compose stack). Free it: ss -tlnp | grep :${port}"
+            fi
+          }
+          check_host_port 58383
+          check_host_port 44551
+          check_host_port 80
+          check_host_port 443
+          echo "host preflight ok"
+          EOF
       - name: Pull and up
         if: steps.gate.outputs.ready == 'true'
         env:

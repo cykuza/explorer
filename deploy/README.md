@@ -91,17 +91,39 @@ On every push to `master`, CI runs the usual gates, then:
 
 ### Server bootstrap (once)
 
+Do this **before** enabling CD — avoid discovering blockers via Actions failures.
+
 As root on the VPS (replace `deploy` with your SSH user if different):
 
 ```bash
+# 1) Layout + ownership
 sudo mkdir -p /opt/explorer
 sudo chown -R deploy:deploy /opt/explorer
-# Create secrets file (never commit); CD will not overwrite it:
-sudo -u deploy cp /dev/null /opt/explorer/.env.prod   # or scp .env.prod.example and edit
+
+# 2) Secrets file (never commit; CD will not overwrite it)
+sudo -u deploy cp /path/to/.env.prod.example /opt/explorer/.env.prod
+sudo -u deploy nano /opt/explorer/.env.prod   # replace every CHANGE_ME
 sudo -u deploy chmod 600 /opt/explorer/.env.prod
+
+# 3) Docker access for the deploy user
+sudo usermod -aG docker deploy   # then re-login
+
+# 4) Free host ports this stack publishes (P2P + HTTP)
+#    mainnet P2P 58383, testnet P2P 44551, nginx 80/443
+ss -tlnp | grep -E ':58383|:44551|:80|:443'
+# Stop any host Cyberyen / other stack using those ports before first deploy.
 ```
 
-`/opt/explorer` must be writable by `DEPLOY_SSH_USER` or `scp` fails with `Permission denied`.
+Checklist CD expects:
+
+| Check | Why |
+|-------|-----|
+| `/opt/explorer` owned + writable by `DEPLOY_SSH_USER` | `scp` target |
+| `/opt/explorer/.env.prod` exists, no `CHANGE_ME` | compose secrets |
+| `docker` + Compose plugin; user in `docker` group | pull/up |
+| Host ports **58383**, **44551**, **80**, **443** free (or already this stack) | cyberyend P2P + nginx bind |
+| OpenSSH only (no `rsync` needed) | file copy |
+| First deploy: use `skip_healthcheck` until indexers catch tip | `/healthz` is 503 while lagging |
 
 Required repository secrets (Settings → Secrets and variables → Actions):
 

@@ -3,7 +3,6 @@
 import { usePathname, useRouter } from "next/navigation";
 
 import {
-  DEFAULT_NETWORK,
   NETWORKS,
   activeNetworkFromPathname,
   networkHref,
@@ -29,28 +28,18 @@ export function NetworkSwitcher() {
     router.push(networkHref(next, sectionPath));
   }
 
-  const badge =
-    current !== DEFAULT_NETWORK ? (
-      <span className="rounded-sm border border-surface-3 px-1.5 py-0.5 text-xs text-text-dim">
-        {current}
-      </span>
-    ) : null;
-
   if (NETWORKS.length <= 1) {
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-text-dim">
-        {badge ?? (
-          <span className="rounded-sm border border-surface-3 px-1.5 py-0.5 text-xs text-text-dim">
-            {current}
-          </span>
-        )}
+        <span className="rounded-sm border border-surface-3 px-1.5 py-0.5 text-xs text-text-dim">
+          {current}
+        </span>
       </span>
     );
   }
 
   return (
     <div className="flex items-center gap-2">
-      {badge}
       <label htmlFor="network-switcher" className="sr-only">
         Network
       </label>

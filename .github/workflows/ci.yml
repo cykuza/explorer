@@ -318,6 +318,26 @@ jobs:
             ssh-keyscan -p "${PORT}" -t ed25519 "${DEPLOY_SSH_HOST}" >> ~/.ssh/known_hosts
           fi
           chmod 644 ~/.ssh/known_hosts
+      - name: Ensure /opt/explorer is writable
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+        run: |
+          PORT="${DEPLOY_SSH_PORT:-22}"
+          ssh -p "${PORT}" "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" bash -s <<'EOF'
+          set -euo pipefail
+          if [ ! -d /opt/explorer ]; then
+            echo "::error::/opt/explorer does not exist. On the server (as root): mkdir -p /opt/explorer && chown ${USER}:${USER} /opt/explorer"
+            exit 1
+          fi
+          if [ ! -w /opt/explorer ]; then
+            echo "::error::/opt/explorer is not writable by ${USER}. On the server (as root): chown -R ${USER}:${USER} /opt/explorer"
+            exit 1
+          fi
+          mkdir -p /opt/explorer/nginx
+          EOF
       - name: Copy deploy files
         if: steps.gate.outputs.ready == 'true'
         env:

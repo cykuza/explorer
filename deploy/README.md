@@ -89,6 +89,20 @@ On every push to `master`, CI runs the usual gates, then:
 1. **`publish`** — buildx build+push `explorer-backend` and `explorer-web` to GHCR (`latest` + `${{ github.sha }}`). `cyberyend:0.21.6.1` is rebuilt only when `deploy/docker/cyberyend.Dockerfile` changes.
 2. **`deploy`** — on master after publish: if required SSH secrets are set, `scp` compose/nginx/README to `/opt/explorer/`, then `pull` + `up -d` with `EXPLORER_TAG=<sha>`, then `curl -fsS localhost/healthz` (10 attempts with backoff). If secrets are absent, the job still runs but skips deploy steps and succeeds. The host needs OpenSSH only (no `rsync` package).
 
+### Server bootstrap (once)
+
+As root on the VPS (replace `deploy` with your SSH user if different):
+
+```bash
+sudo mkdir -p /opt/explorer
+sudo chown -R deploy:deploy /opt/explorer
+# Create secrets file (never commit); CD will not overwrite it:
+sudo -u deploy cp /dev/null /opt/explorer/.env.prod   # or scp .env.prod.example and edit
+sudo -u deploy chmod 600 /opt/explorer/.env.prod
+```
+
+`/opt/explorer` must be writable by `DEPLOY_SSH_USER` or `scp` fails with `Permission denied`.
+
 Required repository secrets (Settings → Secrets and variables → Actions):
 
 | Secret | Purpose |

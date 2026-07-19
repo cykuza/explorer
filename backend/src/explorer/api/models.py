@@ -214,6 +214,8 @@ class NetworkHealth(BaseModel):
 
     db_height: int
     node_height: int
+    node_headers: int
+    ibd: bool
     lag: int
 
 

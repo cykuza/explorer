@@ -137,6 +137,8 @@ export type SearchHit = {
 export type NetworkHealth = {
   db_height: number;
   node_height: number;
+  node_headers: number;
+  ibd: boolean;
   lag: number;
 };
 

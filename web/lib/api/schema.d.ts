@@ -431,6 +431,10 @@ export interface components {
             db_height: number;
             /** Node Height */
             node_height: number;
+            /** Node Headers */
+            node_headers: number;
+            /** Ibd */
+            ibd: boolean;
             /** Lag */
             lag: number;
         };

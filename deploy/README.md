@@ -123,7 +123,7 @@ Checklist CD expects:
 | `docker` + Compose plugin; user in `docker` group | pull/up |
 | Host ports **58383**, **44551**, **80**, **443** free (or already this stack) | cyberyend P2P + nginx bind |
 | OpenSSH only (no `rsync` needed) | file copy |
-| First deploy: use `skip_healthcheck` until indexers catch tip | `/healthz` is 503 while lagging |
+| First deploy: use `skip_healthcheck` until IBD finishes and indexers catch tip | `/healthz` is **503** while `initialblockdownload` is true or lag exceeds budget |
 
 Local check of preflight helpers (no Docker):
 
@@ -156,7 +156,7 @@ cd /opt/explorer
 EXPLORER_TAG=<previous_sha> docker compose -f compose.prod.yml --env-file .env.prod up -d
 ```
 
-**First boot:** initial mainnet backfill takes hours. `/healthz` returns **503** until tip lag is within `EXPLORER_API_MAX_LAG`, so the deploy job’s healthcheck would fail. For the very first deploy, re-run the workflow via **Actions → CI → Run workflow** with **skip_healthcheck** enabled (or wait until lag is healthy and re-run without skipping).
+**First boot:** initial mainnet IBD and indexer backfill take hours. `/healthz` returns **503** while the node reports `initialblockdownload=true` **or** tip lag exceeds `EXPLORER_API_MAX_LAG`, so the deploy job’s healthcheck would fail. For the very first deploy, re-run the workflow via **Actions → CI → Run workflow** with **skip_healthcheck** enabled (or wait until IBD completes and lag is healthy, then re-run without skipping).
 
 ### TLS bootstrap (certbot webroot)
 

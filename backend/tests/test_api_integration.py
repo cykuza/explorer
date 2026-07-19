@@ -145,8 +145,17 @@ async def test_live_tip_block_tx_address_mempool_mweb_search(
     assert search.json() == {"type": "block", "id": str(tip_body["height"])}
 
     health = await client.get("/healthz")
-    assert health.status_code == 200
-    assert health.json()["networks"]["regtest"]["lag"] == 0
+    # Regtest may keep initialblockdownload=true on a short/fresh chain even after
+    # sync (Cyberyen quirk). Assert the healthz rule against observed IBD — do not
+    # force 200 for the sake of a green test; mainnet IBD is the prod gate.
+    body = health.json()
+    net = body["networks"]["regtest"]
+    assert set(net) >= {"db_height", "node_height", "node_headers", "ibd", "lag"}
+    if net["ibd"]:
+        assert health.status_code == 503
+    else:
+        assert health.status_code == 200
+        assert net["lag"] == 0
 
 
 @pytest.mark.asyncio

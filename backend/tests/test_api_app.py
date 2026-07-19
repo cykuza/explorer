@@ -198,6 +198,12 @@ def stub_rpc() -> AsyncMock:
     async def call(method: str, *params: Any) -> Any:
         if method == "getblockcount":
             return 1
+        if method == "getblockchaininfo":
+            return {
+                "blocks": 1,
+                "headers": 1,
+                "initialblockdownload": False,
+            }
         if method == "getmempoolinfo":
             return {"size": 2, "bytes": 500, "total_fee": Decimal("0.00010000")}
         if method == "getrawmempool":
@@ -471,7 +477,58 @@ async def test_healthz(api_client: AsyncClient) -> None:
     r = await api_client.get("/healthz")
     assert r.status_code == 200
     body = r.json()
-    assert body["networks"]["regtest"]["lag"] == 0
+    net = body["networks"]["regtest"]
+    assert net["lag"] == 0
+    assert net["db_height"] == 1
+    assert net["node_height"] == 1
+    assert net["node_headers"] == 1
+    assert net["ibd"] is False
+
+
+@pytest.mark.asyncio
+async def test_healthz_ibd_returns_503(
+    api_engine: AsyncEngine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rpc = AsyncMock(spec=RpcClient)
+
+    async def call(method: str, *params: Any) -> Any:
+        if method == "getblockchaininfo":
+            return {
+                "blocks": 1,
+                "headers": 100,
+                "initialblockdownload": True,
+            }
+        raise AssertionError(f"unexpected RPC {method}")
+
+    rpc.call = AsyncMock(side_effect=call)
+    rpc.aclose = AsyncMock()
+
+    monkeypatch.setenv("EXPLORER_API_NETWORKS", "regtest")
+    monkeypatch.setenv("EXPLORER_DB_URL", str(api_engine.url))
+    monkeypatch.setenv("EXPLORER_REGTEST_RPC_URL", "http://stub")
+    monkeypatch.setenv("EXPLORER_REGTEST_RPC_USER", "u")
+    monkeypatch.setenv("EXPLORER_REGTEST_RPC_PASSWORD", "p")
+    monkeypatch.setenv("EXPLORER_API_MAX_LAG", "10")
+
+    settings = ApiSettings()  # type: ignore[call-arg]
+    settings.network_rpc["regtest"] = NetworkRpcConfig("http://stub", "u", "p")
+    ctx = NetworkContext(
+        network="regtest",
+        schema="regtest",
+        engine=api_engine,
+        rpc=rpc,
+    )
+    app = create_app(settings, contexts={"regtest": ctx}, engine=api_engine)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        r = await client.get("/healthz")
+    assert r.status_code == 503
+    net = r.json()["networks"]["regtest"]
+    assert net["ibd"] is True
+    assert net["lag"] == 0
+    assert net["node_height"] == 1
+    assert net["node_headers"] == 100
 
 
 @pytest.mark.asyncio

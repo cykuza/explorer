@@ -746,17 +746,23 @@ async def healthz(request: Request) -> HealthResponse | JSONResponse:
             ).one_or_none()
         db_height = int(row.height) if row is not None else -1
         try:
-            node_height = int(await ctx.rpc.call("getblockcount"))
+            info = await ctx.rpc.call("getblockchaininfo")
+            node_height = int(info["blocks"])
+            node_headers = int(info["headers"])
+            ibd = bool(info["initialblockdownload"])
+            lag = max(node_height - db_height, 0) if db_height >= 0 else settings.api_max_lag + 1
         except Exception:
             node_height = -1
+            node_headers = -1
+            ibd = True
             lag = settings.api_max_lag + 1
-        else:
-            lag = max(node_height - db_height, 0) if db_height >= 0 else settings.api_max_lag + 1
-        if lag > settings.api_max_lag:
+        if lag > settings.api_max_lag or ibd:
             unhealthy = True
         networks[network] = NetworkHealth(
             db_height=db_height,
             node_height=node_height,
+            node_headers=node_headers,
+            ibd=ibd,
             lag=lag,
         )
     body = HealthResponse(networks=networks)

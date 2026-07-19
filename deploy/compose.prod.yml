@@ -32,6 +32,9 @@ services:
       - -dbcache=1536
       - -maxmempool=300
       - -datadir=/data
+      - -addnode=176.62.189.73
+      - -addnode=51.195.40.248
+      - -addnode=54.38.157.68
     volumes:
       - cyberyend-mainnet-data:/data
     ports:

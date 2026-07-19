@@ -18,20 +18,20 @@ from explorer.rpc import RpcClient
 
 pytestmark = pytest.mark.integration
 
+# Fresh regtest may still report mweb ``defined`` (activation=None) until enough
+# blocks land in the first period. Cap ticks so CI cannot hang.
+_MAX_AWAIT_ACTIVATION_TICKS = 40
+
 
 @pytest.mark.asyncio
 async def test_miner_bootstrap_or_steady(rpc: RpcClient, settings: Settings) -> None:
-    """Drive one miner path from live tip: activation boundary or steady single block.
+    """Drive one miner path from live tip: await activation, boundary, or steady.
 
-    Shared regtest is usually past MWEB activation; prefer steady. If tip can still
-    reach ``activation - 1``, mine across the boundary instead.
+    Shared regtest is often past MWEB activation (steady). Fresh CI compose may
+    still have mweb ``defined`` — exercise the await-activation bootstrap branch
+    first. If tip can still reach ``activation - 1`` within a modest budget,
+    cross the boundary; otherwise assert steady/bootstrap tip advance.
     """
-    info = await rpc.call("getblockchaininfo")
-    assert isinstance(info, dict)
-    tip = int(info["blocks"])
-    activation = predict_mweb_activation_height(info)
-    assert activation is not None, "regtest mweb should be predictable after compose start"
-
     miner_settings = MinerSettings(
         network="regtest",
         rpc_url=settings.rpc_url,
@@ -41,25 +41,46 @@ async def test_miner_bootstrap_or_steady(rpc: RpcClient, settings: Settings) -> 
         miner_interval_sec=1,
     )
 
-    # Use a dedicated wallet so we do not disturb testwallet state unnecessarily.
     stop = asyncio.Event()
     root = RpcClient(settings.rpc_url, settings.rpc_user, settings.rpc_password)
     miner = Miner(miner_settings, root, stop_event=stop, sleep=_noop_sleep)
     try:
         await miner.bootstrap_wallet()
+
+        info = await miner.rpc.call("getblockchaininfo")
+        assert isinstance(info, dict)
+        tip = int(info["blocks"])
+        activation = predict_mweb_activation_height(info)
+        path_prefix = ""
+
+        if activation is None:
+            path_prefix = "await_activation+"
+            print(f"MINER_INTEGRATION_PATH=await_activation tip={tip} activation=None")
+            for _ in range(_MAX_AWAIT_ACTIVATION_TICKS):
+                tip_before = int(await miner.rpc.call("getblockcount"))
+                ok = await miner.tick_once()
+                assert ok
+                tip_after = int(await miner.rpc.call("getblockcount"))
+                assert tip_after > tip_before, (
+                    f"await_activation expected tip advance, {tip_before} -> {tip_after}"
+                )
+                info = await miner.rpc.call("getblockchaininfo")
+                assert isinstance(info, dict)
+                tip = int(info["blocks"])
+                activation = predict_mweb_activation_height(info)
+                if activation is not None:
+                    break
+            assert activation is not None, (
+                f"mweb still defined after {_MAX_AWAIT_ACTIVATION_TICKS} miner ticks (tip={tip})"
+            )
+
         mode = select_miner_mode(tip, activation)
         distance_to_boundary = (activation - 1) - tip
-
-        # Prefer boundary path only when we can reach it with a modest number of
-        # ticks (batch 25) without hour-long runs on a cold chain.
         can_cross_boundary = 0 <= distance_to_boundary <= 200
 
         if can_cross_boundary:
-            path = "boundary"
-            print(
-                f"MINER_INTEGRATION_PATH={path} tip={tip} activation={activation}",
-            )
-            # Approach until tip == activation - 1, then one activation tick.
+            path = f"{path_prefix}boundary"
+            print(f"MINER_INTEGRATION_PATH={path} tip={tip} activation={activation}")
             while True:
                 info2 = await miner.rpc.call("getblockchaininfo")
                 assert isinstance(info2, dict)
@@ -76,39 +97,36 @@ async def test_miner_bootstrap_or_steady(rpc: RpcClient, settings: Settings) -> 
                     break
                 ok = await miner.tick_once()
                 assert ok
-                # Safety: avoid infinite loop if tip stalls.
                 tip3 = int(await miner.rpc.call("getblockcount"))
                 assert tip3 > tip2 or tip2 == activation - 1
-        else:
-            path = "steady"
+            return
+
+        if mode == "steady" or tip >= activation + COINBASE_MATURITY:
+            path = f"{path_prefix}steady"
             print(
                 f"MINER_INTEGRATION_PATH={path} tip={tip} activation={activation} mode={mode}",
             )
-            # If still in bootstrap past activation, advance with miner ticks until
-            # steady, then mine exactly one steady block — or mine one bootstrap
-            # block and assert tip advanced by the batch size.
-            if mode == "steady" or tip >= activation + COINBASE_MATURITY:
-                tip_before = int(await miner.rpc.call("getblockcount"))
-                ok = await miner.tick_once()
-                assert ok
-                tip_after = int(await miner.rpc.call("getblockcount"))
-                assert tip_after == tip_before + 1, (
-                    f"steady path expected +1 block, {tip_before} -> {tip_after}"
-                )
-            else:
-                # Past activation but still bootstrap: one tick must advance tip.
-                tip_before = int(await miner.rpc.call("getblockcount"))
-                ok = await miner.tick_once()
-                assert ok
-                tip_after = int(await miner.rpc.call("getblockcount"))
-                assert tip_after > tip_before, (
-                    f"bootstrap path expected tip advance, {tip_before} -> {tip_after}"
-                )
-                path = "bootstrap_post_activation"
-                print(
-                    f"MINER_INTEGRATION_PATH={path} tip_before={tip_before} "
-                    f"tip_after={tip_after} activation={activation}",
-                )
+            tip_before = int(await miner.rpc.call("getblockcount"))
+            ok = await miner.tick_once()
+            assert ok
+            tip_after = int(await miner.rpc.call("getblockcount"))
+            assert tip_after == tip_before + 1, (
+                f"steady path expected +1 block, {tip_before} -> {tip_after}"
+            )
+            return
+
+        path = f"{path_prefix}bootstrap_post_activation"
+        tip_before = int(await miner.rpc.call("getblockcount"))
+        ok = await miner.tick_once()
+        assert ok
+        tip_after = int(await miner.rpc.call("getblockcount"))
+        assert tip_after > tip_before, (
+            f"bootstrap path expected tip advance, {tip_before} -> {tip_after}"
+        )
+        print(
+            f"MINER_INTEGRATION_PATH={path} tip_before={tip_before} "
+            f"tip_after={tip_after} activation={activation}",
+        )
     finally:
         stop.set()
         await miner.rpc.aclose()

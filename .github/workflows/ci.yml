@@ -295,21 +295,25 @@ jobs:
         env:
           DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
           DEPLOY_SSH_HOST_KEY: ${{ secrets.DEPLOY_SSH_HOST_KEY }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
+          PORT="${DEPLOY_SSH_PORT:-22}"
           if [ -n "${DEPLOY_SSH_HOST_KEY}" ]; then
             printf '%s\n' "${DEPLOY_SSH_HOST_KEY}" > ~/.ssh/known_hosts
           else
-            ssh-keyscan -H "${DEPLOY_SSH_HOST}" >> ~/.ssh/known_hosts
+            ssh-keyscan -p "${PORT}" -t ed25519 "${DEPLOY_SSH_HOST}" >> ~/.ssh/known_hosts
           fi
           chmod 644 ~/.ssh/known_hosts
       - name: Rsync deploy files
         env:
           DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
           DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
         run: |
-          rsync -avz \
+          PORT="${DEPLOY_SSH_PORT:-22}"
+          rsync -avz -e "ssh -p ${PORT}" \
             deploy/compose.prod.yml \
             deploy/README.md \
             deploy/nginx \
@@ -318,8 +322,10 @@ jobs:
         env:
           DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
           DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
         run: |
-          ssh "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
+          PORT="${DEPLOY_SSH_PORT:-22}"
+          ssh -p "${PORT}" "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
             "cd /opt/explorer && \
              EXPLORER_TAG=${{ github.sha }} docker compose -f compose.prod.yml --env-file .env.prod pull && \
              EXPLORER_TAG=${{ github.sha }} docker compose -f compose.prod.yml --env-file .env.prod up -d --remove-orphans"
@@ -328,8 +334,10 @@ jobs:
         env:
           DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
           DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
         run: |
-          ssh "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" bash -s <<'EOF'
+          PORT="${DEPLOY_SSH_PORT:-22}"
+          ssh -p "${PORT}" "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" bash -s <<'EOF'
           set -euo pipefail
           for attempt in $(seq 1 10); do
             if curl -fsS localhost/healthz; then

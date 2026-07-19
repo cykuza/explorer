@@ -96,9 +96,10 @@ Required repository secrets (Settings → Secrets and variables → Actions):
 | `DEPLOY_SSH_HOST` | Server hostname or IP |
 | `DEPLOY_SSH_USER` | SSH user (e.g. `deploy`) |
 | `DEPLOY_SSH_KEY` | Private key for that user |
+| `DEPLOY_SSH_PORT` | Optional. SSH port (default `22` when unset). Threaded into rsync (`-e "ssh -p …"`), `ssh -p`, and keyscan. |
 | `DEPLOY_SSH_HOST_KEY` | Optional. Server’s `ssh-ed25519` public host key line (pinned into `known_hosts`). If unset, CD falls back to `ssh-keyscan` at deploy time. |
 
-Pin the host key once (preferred): on a trusted machine run `ssh-keyscan -t ed25519 <host>`, verify the fingerprint out-of-band against the server, then store that single line as `DEPLOY_SSH_HOST_KEY`.
+Pin the host key once (preferred): on a trusted machine run `ssh-keyscan -p <port> -t ed25519 <host>` (omit `-p` when using port 22), verify the fingerprint out-of-band against the server, then store that single line as `DEPLOY_SSH_HOST_KEY`. For a non-standard port, keyscan emits a **bracketed** line (`[host]:port ssh-ed25519 …`) — store that form verbatim; OpenSSH will not match a bare `host ssh-ed25519 …` entry when connecting on a non-22 port.
 
 Images on GHCR are public; the server does not need registry login to pull.
 

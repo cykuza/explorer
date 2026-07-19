@@ -385,6 +385,9 @@ jobs:
           cd /opt/explorer
           EXPLORER_TAG="${EXPLORER_TAG}" docker compose -f compose.prod.yml --env-file .env.prod pull
           EXPLORER_TAG="${EXPLORER_TAG}" docker compose -f compose.prod.yml --env-file .env.prod up -d --remove-orphans
+          # Drop unused images/build cache from prior deploys (never prune volumes).
+          docker image prune -af
+          docker builder prune -af
           EOF
       - name: Healthcheck
         if: |

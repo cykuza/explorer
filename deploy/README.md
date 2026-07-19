@@ -103,7 +103,7 @@ Testnet P2P **44551** is published; external peers are welcome, and external min
 On every push to `master`, CI runs the usual gates, then:
 
 1. **`publish`** — buildx build+push `explorer-backend` and `explorer-web` to GHCR (`latest` + `${{ github.sha }}`). `cyberyend:0.21.6.1` is rebuilt only when `deploy/docker/cyberyend.Dockerfile` changes.
-2. **`deploy`** — on master after publish: if required SSH secrets are set, `scp` compose/nginx/README to `/opt/explorer/`, then `pull` + `up -d` with `EXPLORER_TAG=<sha>`, then `curl -fsS localhost/healthz` (10 attempts with backoff). If secrets are absent, the job still runs but skips deploy steps and succeeds. The host needs OpenSSH only (no `rsync` package).
+2. **`deploy`** — on master after publish: if required SSH secrets are set, `scp` compose/nginx/README to `/opt/explorer/`, then `pull` + `up -d` with `EXPLORER_TAG=<sha>`, then `docker image prune -af` and `docker builder prune -af` (unused artifacts only; volumes untouched), then `curl -fsS localhost/healthz` (10 attempts with backoff). If secrets are absent, the job still runs but skips deploy steps and succeeds. The host needs OpenSSH only (no `rsync` package).
 
 ### Server bootstrap (once)
 
@@ -165,10 +165,11 @@ Images on GHCR may default to **private** on first publish. CD authenticates `do
 
 **Tag scheme:** explorer images get `latest` and the git SHA. CD sets `EXPLORER_TAG=<sha>` on the compose command line without rewriting `.env.prod`. Cyberyend stays on `0.21.6.1` (`CYBERYEND_TAG`).
 
-**Manual rollback** (previous SHA images remain on the host after a failed deploy):
+**Manual rollback** (CD prunes unused local images after a successful `up`; pull the prior SHA from GHCR):
 
 ```bash
 cd /opt/explorer
+EXPLORER_TAG=<previous_sha> docker compose -f compose.prod.yml --env-file .env.prod pull
 EXPLORER_TAG=<previous_sha> docker compose -f compose.prod.yml --env-file .env.prod up -d
 ```
 
@@ -231,4 +232,4 @@ bantime = 3600
 
 ### Disk watch
 
-On a ~75 GB NVMe host, chainstate (mainnet + testnet with `txindex`) and Postgres will dominate growth. Monitor with `df -h` / `docker system df` and alert before free space drops under ~15–20%. Prune unused images after upgrades; do not prune named volumes.
+On a ~75 GB NVMe host, chainstate (mainnet + testnet with `txindex`) and Postgres will dominate growth. Monitor with `df -h` / `docker system df` and alert before free space drops under ~15–20%. CD already runs `docker image prune -af` / `docker builder prune -af` after each deploy; do not prune named volumes. Optional host-side Builder GC: `/etc/docker/daemon.json` → `builder.gc`.

@@ -365,8 +365,9 @@ jobs:
           [ -d /opt/explorer ] || fail "/opt/explorer missing. As root: mkdir -p /opt/explorer && chown ${USER}:${USER} /opt/explorer"
           [ -w /opt/explorer ] || fail "/opt/explorer not writable by ${USER}. As root: chown -R ${USER}:${USER} /opt/explorer"
           [ -f /opt/explorer/.env.prod ] || fail "/opt/explorer/.env.prod missing (copy from .env.prod.example and set secrets)"
-          if grep -qE 'CHANGE_ME' /opt/explorer/.env.prod; then
-            fail "/opt/explorer/.env.prod still contains CHANGE_ME — set real passwords"
+          # Only assignment lines (ignore comments that mention CHANGE_ME).
+          if grep -qE '^[A-Za-z_][A-Za-z0-9_]*=CHANGE_ME([[:space:]]|$)' /opt/explorer/.env.prod; then
+            fail "/opt/explorer/.env.prod still has KEY=CHANGE_ME placeholders — set POSTGRES_PASSWORD and CYBERYEN_RPC_PASSWORD"
           fi
           command -v docker >/dev/null || fail "docker not installed or not on PATH for ${USER}"
           docker info >/dev/null 2>&1 || fail "cannot talk to Docker daemon (add ${USER} to the docker group?)"

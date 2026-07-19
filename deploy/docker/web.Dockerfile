@@ -9,7 +9,7 @@ FROM node@sha256:5711a0d445a1af54af9589066c646df387d1831a608226f4cd694fc59e74505
 WORKDIR /app
 RUN corepack enable
 
-COPY web/package.json web/pnpm-lock.yaml ./
+COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY web/ ./

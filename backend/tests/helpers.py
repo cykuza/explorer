@@ -3,73 +3,34 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
-from explorer.rpc import RpcClient, RpcError
+from explorer.chain import (
+    predict_mweb_activation_height,
+    softfork_active,
+    softfork_bip,
+    softfork_entry,
+)
+from explorer.rpc import RpcClient
+from explorer.wallet import (
+    ensure_wallet,
+    mine_to,
+    mweb_address,
+    rpc_root_url,
+    wallet_rpc_url,
+)
 
-
-def rpc_root_url(url: str) -> str:
-    """Strip ``/wallet/<name>`` suffix if present."""
-    base = url.rstrip("/")
-    if "/wallet/" in base:
-        return base.split("/wallet/")[0]
-    return base
-
-
-def wallet_rpc_url(url: str, name: str) -> str:
-    return f"{rpc_root_url(url)}/wallet/{name}"
-
-
-async def ensure_wallet(rpc: RpcClient, name: str = "testwallet") -> None:
-    """Create or load a wallet for mining/sending; no-op if already loaded.
-
-    Uses the node root RPC endpoint (not ``/wallet/...``) so it works even when
-    multiple wallets are loaded.
-    """
-    root = RpcClient(rpc_root_url(rpc.url), rpc.auth[0], rpc.auth[1])
-    try:
-        try:
-            wallets = await root.call("listwallets")
-            if isinstance(wallets, list) and name in wallets:
-                return
-        except RpcError:
-            pass
-
-        try:
-            await root.call("loadwallet", name)
-            return
-        except RpcError as exc:
-            if "already loaded" in exc.message.lower():
-                return
-            if exc.code not in (-18, -4):
-                pass
-
-        try:
-            await root.call("createwallet", name)
-        except RpcError as exc:
-            if "already exists" in exc.message.lower() or "already loaded" in exc.message.lower():
-                try:
-                    await root.call("loadwallet", name)
-                except RpcError as load_exc:
-                    if "already loaded" not in load_exc.message.lower():
-                        raise
-                return
-            raise
-    finally:
-        await root.aclose()
-
-
-async def mine_to(rpc: RpcClient, address: str, n: int) -> list[str]:
-    """Mine ``n`` blocks to ``address``, in batches to avoid RPC timeouts."""
-    hashes: list[str] = []
-    remaining = n
-    while remaining > 0:
-        batch = min(25, remaining)
-        result = await rpc.call("generatetoaddress", batch, address)
-        assert isinstance(result, list)
-        hashes.extend(str(h) for h in result)
-        remaining -= batch
-    return hashes
+# Re-export for existing test imports.
+__all__ = [
+    "address_unspent_balance",
+    "activate_mweb",
+    "as_decimal",
+    "ensure_wallet",
+    "mine_to",
+    "mweb_address",
+    "predict_mweb_activation_height",
+    "rpc_root_url",
+    "wallet_rpc_url",
+]
 
 
 async def address_unspent_balance(rpc: RpcClient, address: str) -> Decimal:
@@ -87,106 +48,10 @@ def as_decimal(value: object) -> Decimal:
     return Decimal(str(value))
 
 
-def _softfork_entry(info: dict[str, Any], name: str) -> dict[str, Any] | None:
-    softforks = info.get("softforks") or info.get("bip9_softforks") or {}
-    if not isinstance(softforks, dict):
-        return None
-    entry = softforks.get(name)
-    return entry if isinstance(entry, dict) else None
-
-
-def _softfork_bip(entry: dict[str, Any]) -> dict[str, Any]:
-    bip = entry.get("bip8") or entry.get("bip9") or {}
-    return bip if isinstance(bip, dict) else {}
-
-
-def _softfork_active(info: dict[str, Any], name: str) -> bool:
-    entry = _softfork_entry(info, name)
-    if entry is None:
-        return False
-    if entry.get("active") is True:
-        return True
-    status = entry.get("status")
-    if isinstance(status, str) and status.lower() == "active":
-        return True
-    bip = _softfork_bip(entry)
-    bip_status = bip.get("status")
-    return isinstance(bip_status, str) and bip_status.lower() == "active"
-
-
-def _miner_confirmation_window(info: dict[str, Any]) -> int:
-    """BIP period from any softfork ``statistics.period`` (same nMinerConfirmationWindow)."""
-    softforks = info.get("softforks") or {}
-    if not isinstance(softforks, dict):
-        raise RuntimeError("getblockchaininfo.softforks missing")
-    for entry in softforks.values():
-        if not isinstance(entry, dict):
-            continue
-        bip = _softfork_bip(entry)
-        stats = bip.get("statistics") or {}
-        if isinstance(stats, dict) and stats.get("period") is not None:
-            return int(stats["period"])
-    raise RuntimeError(
-        "cannot derive miner confirmation window: no softfork statistics.period",
-    )
-
-
-def predict_mweb_activation_height(info: dict[str, Any]) -> int | None:
-    """Return MWEB activation height from ``getblockchaininfo``, or None if still defined.
-
-    Uses ``softforks.mweb`` status/since/height plus ``statistics.period`` from any
-    deployment (testdummy while mweb has no stats). Does not hardcode 430/431/432.
-    """
-    mweb = _softfork_entry(info, "mweb") or _softfork_entry(info, "MWEB")
-    if mweb is None:
-        raise RuntimeError("mweb softfork missing from getblockchaininfo")
-    bip = _softfork_bip(mweb)
-    status = str(bip.get("status") or mweb.get("status") or "").lower()
-
-    if mweb.get("active") is True or status == "active":
-        if mweb.get("height") is not None:
-            return int(mweb["height"])
-        if bip.get("since") is not None:
-            return int(bip["since"])
-        raise RuntimeError(f"mweb active but no height/since: {mweb}")
-
-    if status == "defined":
-        return None
-
-    period = _miner_confirmation_window(info)
-    if status == "locked_in":
-        # ACTIVE begins at the next period boundary after locked_in.since.
-        return int(bip["since"]) + period
-    if status == "started":
-        # Height-based timeout_height==start_height forces LOCKED_IN at the end of
-        # this period, then ACTIVE after one more period.
-        return int(bip["since"]) + 2 * period
-    raise RuntimeError(f"unhandled mweb softfork status {status!r}: {mweb}")
-
-
-async def mweb_address(rpc: RpcClient) -> str:
-    """Return a new MWEB address (tries address_type variants the node accepts)."""
-    attempts: list[tuple[Any, ...]] = [
-        ("mweb", "mweb"),
-        ("", "mweb"),
-        ("mweb",),
-    ]
-    last_exc: RpcError | None = None
-    for args in attempts:
-        try:
-            addr = await rpc.call("getnewaddress", *args)
-            return str(addr)
-        except RpcError as exc:
-            last_exc = exc
-            continue
-    try:
-        help_text = str(await rpc.call("help", "getnewaddress"))
-        print(f"getnewaddress help:\n{help_text}")
-    except RpcError:
-        pass
-    if last_exc is not None:
-        raise last_exc
-    raise RuntimeError("getnewaddress mweb variants all failed")
+# Backward-compatible private aliases used by older test code paths.
+_softfork_entry = softfork_entry
+_softfork_bip = softfork_bip
+_softfork_active = softfork_active
 
 
 async def activate_mweb(rpc: RpcClient, mine_address: str) -> int:
@@ -204,9 +69,9 @@ async def activate_mweb(rpc: RpcClient, mine_address: str) -> int:
         info = await rpc.call("getblockchaininfo")
         assert isinstance(info, dict)
         tip = int(info.get("blocks") or await rpc.call("getblockcount"))
-        mweb = _softfork_entry(info, "mweb") or _softfork_entry(info, "MWEB")
+        mweb = softfork_entry(info, "mweb") or softfork_entry(info, "MWEB")
         assert mweb is not None
-        bip = _softfork_bip(mweb)
+        bip = softfork_bip(mweb)
 
         activation = predict_mweb_activation_height(info)
         if activation is None:
@@ -214,7 +79,7 @@ async def activate_mweb(rpc: RpcClient, mine_address: str) -> int:
             continue
 
         # Activation block already on chain.
-        if tip >= activation and (_softfork_active(info, "mweb") or _softfork_active(info, "MWEB")):
+        if tip >= activation and (softfork_active(info, "mweb") or softfork_active(info, "MWEB")):
             block = await rpc.call("getblock", await rpc.call("getblockhash", activation), 2)
             assert isinstance(block, dict)
             if "mweb" not in block:
@@ -257,7 +122,7 @@ async def activate_mweb(rpc: RpcClient, mine_address: str) -> int:
             raise RuntimeError(
                 f"expected tip==activation {activation} after peg-in mine, got {tip2}",
             )
-        if not (_softfork_active(info2, "mweb") or _softfork_active(info2, "MWEB")):
+        if not (softfork_active(info2, "mweb") or softfork_active(info2, "MWEB")):
             raise RuntimeError(f"mweb not active after activation block at tip {tip2}")
         block_hash = str(await rpc.call("getblockhash", tip2))
         block = await rpc.call("getblock", block_hash, 2)

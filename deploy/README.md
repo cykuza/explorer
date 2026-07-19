@@ -32,13 +32,13 @@ Non-default networks are emitted under `/{network}/…` at build time from `NEXT
 
 ## Production compose
 
-Stack file: [`compose.prod.yml`](compose.prod.yml). Services: `cyberyend-mainnet`, `cyberyend-testnet`, `postgres`, `indexer-mainnet`, `indexer-testnet`, `api`, `nginx`.
+Stack file: [`compose.prod.yml`](compose.prod.yml). Services: `cyberyend-mainnet`, `cyberyend-testnet`, `postgres`, `indexer-mainnet`, `indexer-testnet`, `miner-testnet`, `api`, `nginx`.
 
 Images are pulled from GHCR (no local `build:`):
 
 | Service | Image |
 |---------|--------|
-| `api`, `indexer-*` | `ghcr.io/cykuza/explorer-backend:${EXPLORER_TAG:-latest}` |
+| `api`, `indexer-*`, `miner-testnet` | `ghcr.io/cykuza/explorer-backend:${EXPLORER_TAG:-latest}` |
 | `nginx` | `ghcr.io/cykuza/explorer-web:${EXPLORER_TAG:-latest}` |
 | `cyberyend-*` | `ghcr.io/cykuza/cyberyend:${CYBERYEND_TAG:-0.21.6.1}` |
 
@@ -81,6 +81,22 @@ docker compose --env-file deploy/.env.prod -f deploy/compose.prod.yml …
 Each indexer runs `alembic upgrade head` for its schema (`EXPLORER_NETWORK` → schema name, unless `EXPLORER_DB_SCHEMA` is set) before `explorer sync`. The API process never migrates.
 
 Resource notes (4 vCPU / 8 GB host): mainnet node `-dbcache=1536` / `-maxmempool=300`; testnet `-dbcache=384` / `-maxmempool=100`; Postgres `shared_buffers=256MB` (+ related knobs). P2P published (`58383`, `44551`); RPC stays on the Compose network only.
+
+### Testnet miner
+
+`miner-testnet` runs `explorer miner` against the testnet node RPC only (no Postgres). It refuses `EXPLORER_NETWORK=mainnet`.
+
+Cyberyen testnet MWEB activates BIP8 height-based at **2880** (`3 × nMinerConfirmationWindow`, `960`). Consensus requires the first post-activation block to include ≥1 MWEB peg-in; without a peg-in in the mempool at the boundary, `generatetoaddress` fails with `bad-txns-vin-empty` (empty HogEx vin) and the chain stalls until a peg-in appears. A peg-in confirmed *before* tip `2879` is wasted.
+
+The miner automates this:
+
+1. **Bootstrap** while tip &lt; `activation + 100` (2980): mine in batches of 25 with `EXPLORER_MINER_BOOTSTRAP_SLEEP_SEC` (default 5s) between batches.
+2. At tip `activation − 1`: submit an MWEB peg-in, verify it in `getrawmempool`, then mine the activation block. If mining fails with `bad-txns-vin-empty` (or the peg-in never lands in the mempool), it logs `miner_activation_stall`, submits a fresh peg-in, and retries with backoff — never exits.
+3. **Steady** afterwards: one block per `EXPLORER_MINER_INTERVAL_SEC` (default 600s).
+
+From genesis at defaults, bootstrap is roughly **10–15 minutes** of wall time (mostly sleep between ~120 batches to height 2980, plus CPU mining).
+
+Testnet P2P **44551** is published; external peers are welcome, and external miners may join later. Our miner always follows whatever tip the node reports, so competing blocks are fine.
 
 ### Continuous deploy
 

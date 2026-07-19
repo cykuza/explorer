@@ -1,4 +1,4 @@
-"""CLI entry point: ``explorer sync`` / ``explorer api`` / ``explorer --version``."""
+"""CLI entry point: ``explorer sync`` / ``explorer api`` / ``explorer miner`` / ``--version``."""
 
 from __future__ import annotations
 
@@ -33,6 +33,10 @@ def main(argv: list[str] | None = None) -> int:
         type=int,
         default=None,
         help="Bind port (default EXPLORER_API_PORT)",
+    )
+    sub.add_parser(
+        "miner",
+        help="Mine blocks on testnet/regtest (refuses mainnet)",
     )
 
     args = parser.parse_args(argv)
@@ -70,6 +74,27 @@ def main(argv: list[str] | None = None) -> int:
             log_level="info",
             limit_concurrency=api_settings.api_limit_concurrency,
         )
+        return 0
+    if args.command == "miner":
+        configure_logging(logging.INFO)
+        from explorer.miner import MinerSettings, run_miner
+
+        miner_settings = MinerSettings()  # type: ignore[call-arg]
+        if miner_settings.network == "mainnet":
+            logging.getLogger(__name__).error(
+                "explorer miner refuses to run when EXPLORER_NETWORK=mainnet",
+            )
+            return 2
+        try:
+            asyncio.run(run_miner(miner_settings))
+        except KeyboardInterrupt:
+            return 130
+        except SystemExit as exc:
+            # run_miner may raise SystemExit for defense-in-depth mainnet guard.
+            code = exc.code
+            if isinstance(code, int):
+                return code
+            return 2 if code else 0
         return 0
     parser.print_help()
     return 0

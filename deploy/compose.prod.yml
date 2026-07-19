@@ -167,6 +167,19 @@ services:
       postgres:
         condition: service_healthy
 
+  miner-testnet:
+    image: ghcr.io/cykuza/explorer-backend:${EXPLORER_TAG:-latest}
+    restart: unless-stopped
+    command: ["explorer", "miner"]
+    environment:
+      EXPLORER_NETWORK: testnet
+      EXPLORER_RPC_URL: http://cyberyend-testnet:44549
+      EXPLORER_RPC_USER: ${CYBERYEN_RPC_USER}
+      EXPLORER_RPC_PASSWORD: ${CYBERYEN_RPC_PASSWORD}
+    depends_on:
+      cyberyend-testnet:
+        condition: service_healthy
+
   api:
     image: ghcr.io/cykuza/explorer-backend:${EXPLORER_TAG:-latest}
     restart: unless-stopped

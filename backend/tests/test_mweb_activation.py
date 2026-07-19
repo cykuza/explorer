@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from tests.helpers import predict_mweb_activation_height
+from explorer.chain import predict_mweb_activation_height
 
 
 def _info(mweb: dict[str, Any], *, period: int = 144) -> dict[str, Any]:

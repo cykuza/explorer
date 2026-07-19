@@ -87,7 +87,7 @@ Resource notes (4 vCPU / 8 GB host): mainnet node `-dbcache=1536` / `-maxmempool
 On every push to `master`, CI runs the usual gates, then:
 
 1. **`publish`** — buildx build+push `explorer-backend` and `explorer-web` to GHCR (`latest` + `${{ github.sha }}`). `cyberyend:0.21.6.1` is rebuilt only when `deploy/docker/cyberyend.Dockerfile` changes.
-2. **`deploy`** — if GitHub secrets below are set, rsync compose/nginx/README to `/opt/explorer/`, then `pull` + `up -d` with `EXPLORER_TAG=<sha>`, then `curl -fsS localhost/healthz` (10 attempts with backoff). If secrets are absent, the job is skipped cleanly.
+2. **`deploy`** — on master after publish: if required SSH secrets are set, rsync compose/nginx/README to `/opt/explorer/`, then `pull` + `up -d` with `EXPLORER_TAG=<sha>`, then `curl -fsS localhost/healthz` (10 attempts with backoff). If secrets are absent, the job still runs but skips deploy steps and succeeds.
 
 Required repository secrets (Settings → Secrets and variables → Actions):
 

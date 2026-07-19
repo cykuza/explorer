@@ -280,18 +280,30 @@ jobs:
 
   deploy:
     needs: [backend, integration, web, e2e, compose-validate, prod-validate, publish]
-    if: |
-      github.ref == 'refs/heads/master'
-      && secrets.DEPLOY_SSH_HOST != ''
-      && secrets.DEPLOY_SSH_USER != ''
-      && secrets.DEPLOY_SSH_KEY != ''
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
+      - name: Check deploy secrets
+        id: gate
+        env:
+          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          if [ -z "${DEPLOY_SSH_HOST}" ] || [ -z "${DEPLOY_SSH_USER}" ] || [ -z "${DEPLOY_SSH_KEY}" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Deploy secrets unset; skipping deploy."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@v4
+        if: steps.gate.outputs.ready == 'true'
       - uses: webfactory/ssh-agent@v0.9.0
+        if: steps.gate.outputs.ready == 'true'
         with:
           ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
       - name: Add host to known_hosts
+        if: steps.gate.outputs.ready == 'true'
         env:
           DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
           DEPLOY_SSH_HOST_KEY: ${{ secrets.DEPLOY_SSH_HOST_KEY }}
@@ -307,6 +319,7 @@ jobs:
           fi
           chmod 644 ~/.ssh/known_hosts
       - name: Rsync deploy files
+        if: steps.gate.outputs.ready == 'true'
         env:
           DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
           DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
@@ -319,6 +332,7 @@ jobs:
             deploy/nginx \
             "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}:/opt/explorer/"
       - name: Pull and up
+        if: steps.gate.outputs.ready == 'true'
         env:
           DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
           DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
@@ -330,7 +344,9 @@ jobs:
              EXPLORER_TAG=${{ github.sha }} docker compose -f compose.prod.yml --env-file .env.prod pull && \
              EXPLORER_TAG=${{ github.sha }} docker compose -f compose.prod.yml --env-file .env.prod up -d --remove-orphans"
       - name: Healthcheck
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip_healthcheck != true }}
+        if: |
+          steps.gate.outputs.ready == 'true'
+          && (github.event_name != 'workflow_dispatch' || inputs.skip_healthcheck != true)
         env:
           DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
           DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}

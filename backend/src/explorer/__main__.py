@@ -60,7 +60,13 @@ def main(argv: list[str] | None = None) -> int:
         app = create_app(api_settings)
         import uvicorn
 
-        uvicorn.run(app, host=host, port=port, log_level="info")
+        uvicorn.run(
+            app,
+            host=host,
+            port=port,
+            log_level="info",
+            limit_concurrency=api_settings.api_limit_concurrency,
+        )
         return 0
     parser.print_help()
     return 0

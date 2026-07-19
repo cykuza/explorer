@@ -19,6 +19,18 @@ from explorer.config import Network
 from explorer.rpc import RpcClient
 
 
+def api_engine_kwargs(settings: ApiSettings) -> dict[str, Any]:
+    """Keyword args for the API read engine (statement_timeout on connect)."""
+    return {
+        "pool_pre_ping": True,
+        "connect_args": {
+            "server_settings": {
+                "statement_timeout": str(settings.db_statement_timeout_ms),
+            },
+        },
+    }
+
+
 def _build_contexts(
     settings: ApiSettings,
     engine: AsyncEngine,
@@ -59,7 +71,7 @@ def create_app(
         own_rpcs = False
         if getattr(app.state, "contexts", None) is None:
             cfg: ApiSettings = app.state.settings
-            eng = create_async_engine(cfg.db_url, pool_pre_ping=True)
+            eng = create_async_engine(cfg.db_url, **api_engine_kwargs(cfg))
             app.state.engine = eng
             app.state.contexts = _build_contexts(cfg, eng)
             own_engine = True

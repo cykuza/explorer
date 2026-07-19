@@ -44,6 +44,8 @@ class ApiSettings(BaseSettings):
     api_host: str = Field(default="0.0.0.0")
     api_port: int = Field(default=8080, ge=1, le=65535)
     api_sse_poll_sec: float = Field(default=2, gt=0)
+    db_statement_timeout_ms: int = Field(default=5000, ge=0)
+    api_limit_concurrency: int = Field(default=100, ge=1)
 
     # Populated by model_validator from EXPLORER_<NETWORK>_RPC_* env vars.
     network_rpc: dict[Network, NetworkRpcConfig] = Field(

@@ -1,0 +1,221 @@
+# Production stack: mainnet + testnet cyberyend, Postgres, dual indexers, API, nginx.
+# Secrets live in deploy/.env.prod (copy from .env.prod.example). Never commit .env.prod.
+#
+#   cp deploy/.env.prod.example deploy/.env.prod   # edit secrets
+#   docker compose -f deploy/compose.prod.yml up -d
+
+services:
+  cyberyend-mainnet:
+    build:
+      context: ..
+      dockerfile: deploy/docker/cyberyend.Dockerfile
+      platforms:
+        - linux/amd64
+    platform: linux/amd64
+    restart: unless-stopped
+    command:
+      - -txindex=1
+      - -server=1
+      - -listen=1
+      - -port=58383
+      - -rpcport=58382
+      - -rpcbind=0.0.0.0
+      # Docker bridge / compose networks only (RPC not published to host)
+      - -rpcallowip=10.0.0.0/8
+      - -rpcallowip=172.16.0.0/12
+      - -rpcallowip=192.168.0.0/16
+      - -rpcuser=${CYBERYEN_RPC_USER}
+      - -rpcpassword=${CYBERYEN_RPC_PASSWORD}
+      - -zmqpubrawblock=tcp://0.0.0.0:28332
+      - -zmqpubhashtx=tcp://0.0.0.0:28333
+      - -dbcache=1536
+      - -maxmempool=300
+      - -datadir=/data
+    volumes:
+      - cyberyend-mainnet-data:/data
+    ports:
+      - "58383:58383"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "cyberyen-cli",
+          "-datadir=/data",
+          "-rpcport=58382",
+          "-rpcuser=${CYBERYEN_RPC_USER}",
+          "-rpcpassword=${CYBERYEN_RPC_PASSWORD}",
+          "getblockchaininfo",
+        ]
+      interval: 30s
+      timeout: 15s
+      retries: 10
+      start_period: 120s
+
+  cyberyend-testnet:
+    build:
+      context: ..
+      dockerfile: deploy/docker/cyberyend.Dockerfile
+      platforms:
+        - linux/amd64
+    platform: linux/amd64
+    restart: unless-stopped
+    command:
+      - -testnet
+      - -txindex=1
+      - -server=1
+      - -listen=1
+      - -port=44551
+      - -rpcport=44549
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=10.0.0.0/8
+      - -rpcallowip=172.16.0.0/12
+      - -rpcallowip=192.168.0.0/16
+      - -rpcuser=${CYBERYEN_RPC_USER}
+      - -rpcpassword=${CYBERYEN_RPC_PASSWORD}
+      - -zmqpubrawblock=tcp://0.0.0.0:28332
+      - -zmqpubhashtx=tcp://0.0.0.0:28333
+      - -dbcache=384
+      - -maxmempool=100
+      - -datadir=/data
+    volumes:
+      - cyberyend-testnet-data:/data
+    ports:
+      - "44551:44551"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "cyberyen-cli",
+          "-testnet",
+          "-datadir=/data",
+          "-rpcport=44549",
+          "-rpcuser=${CYBERYEN_RPC_USER}",
+          "-rpcpassword=${CYBERYEN_RPC_PASSWORD}",
+          "getblockchaininfo",
+        ]
+      interval: 30s
+      timeout: 15s
+      retries: 10
+      start_period: 60s
+
+  postgres:
+    # postgres:18 pinned by digest (multi-arch index)
+    image: postgres@sha256:32ca0af8e77bfb8c6610c488e4691f83f972a3e9e64d3b02facf3ab111ad5500
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=768MB
+      - -c
+      - work_mem=8MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - max_connections=100
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  indexer-mainnet:
+    build:
+      context: ..
+      dockerfile: deploy/docker/explorer.Dockerfile
+    restart: unless-stopped
+    command: ["explorer", "sync"]
+    environment:
+      EXPLORER_NETWORK: mainnet
+      EXPLORER_RPC_URL: http://cyberyend-mainnet:58382
+      EXPLORER_RPC_USER: ${CYBERYEN_RPC_USER}
+      EXPLORER_RPC_PASSWORD: ${CYBERYEN_RPC_PASSWORD}
+      EXPLORER_ZMQ_RAWBLOCK: tcp://cyberyend-mainnet:28332
+      EXPLORER_ZMQ_HASHTX: tcp://cyberyend-mainnet:28333
+      EXPLORER_DB_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    depends_on:
+      cyberyend-mainnet:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  indexer-testnet:
+    build:
+      context: ..
+      dockerfile: deploy/docker/explorer.Dockerfile
+    restart: unless-stopped
+    command: ["explorer", "sync"]
+    environment:
+      EXPLORER_NETWORK: testnet
+      EXPLORER_RPC_URL: http://cyberyend-testnet:44549
+      EXPLORER_RPC_USER: ${CYBERYEN_RPC_USER}
+      EXPLORER_RPC_PASSWORD: ${CYBERYEN_RPC_PASSWORD}
+      EXPLORER_ZMQ_RAWBLOCK: tcp://cyberyend-testnet:28332
+      EXPLORER_ZMQ_HASHTX: tcp://cyberyend-testnet:28333
+      EXPLORER_DB_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    depends_on:
+      cyberyend-testnet:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/docker/explorer.Dockerfile
+    restart: unless-stopped
+    command: ["explorer", "api", "--host", "0.0.0.0", "--port", "8080"]
+    environment:
+      EXPLORER_API_NETWORKS: mainnet,testnet
+      EXPLORER_DB_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      EXPLORER_MAINNET_RPC_URL: http://cyberyend-mainnet:58382
+      EXPLORER_MAINNET_RPC_USER: ${CYBERYEN_RPC_USER}
+      EXPLORER_MAINNET_RPC_PASSWORD: ${CYBERYEN_RPC_PASSWORD}
+      EXPLORER_TESTNET_RPC_URL: http://cyberyend-testnet:44549
+      EXPLORER_TESTNET_RPC_USER: ${CYBERYEN_RPC_USER}
+      EXPLORER_TESTNET_RPC_PASSWORD: ${CYBERYEN_RPC_PASSWORD}
+      EXPLORER_API_MAX_LAG: ${EXPLORER_API_MAX_LAG:-10}
+      EXPLORER_DB_STATEMENT_TIMEOUT_MS: ${EXPLORER_DB_STATEMENT_TIMEOUT_MS:-5000}
+      EXPLORER_API_LIMIT_CONCURRENCY: ${EXPLORER_API_LIMIT_CONCURRENCY:-100}
+    depends_on:
+      cyberyend-mainnet:
+        condition: service_healthy
+      cyberyend-testnet:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  nginx:
+    build:
+      context: ..
+      dockerfile: deploy/docker/web.Dockerfile
+      args:
+        NEXT_PUBLIC_NETWORKS: mainnet,testnet
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - certs:/etc/nginx/certs:ro
+      - certbot-www:/var/www/certbot:ro
+    depends_on:
+      - api
+
+volumes:
+  cyberyend-mainnet-data:
+  cyberyend-testnet-data:
+  postgres-data:
+  certs:
+  certbot-www:

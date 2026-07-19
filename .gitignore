@@ -15,6 +15,8 @@ build/
 # Environment / secrets
 .env
 .env.local
+.env.prod
+deploy/.env.prod
 
 # Editor / OS / agent (local only — never commit)
 .vscode/

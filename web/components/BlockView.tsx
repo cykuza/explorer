@@ -236,18 +236,19 @@ function BlockViewInner({
             {txs.txs.map((tx) => (
               <li
                 key={tx.txid}
-                className="grid h-10 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 text-sm"
+                className="grid h-10 grid-cols-[minmax(0,1fr)_4.5rem_minmax(14rem,max-content)] items-center gap-3 text-sm"
                 data-testid="block-tx-row"
               >
                 <HashLink
                   value={tx.txid}
                   href={entityHref(network, "tx", tx.txid)}
                 />
-                <TxKindBadge isHogex={tx.is_hogex} hasMweb={tx.has_mweb} />
+                <span className="flex justify-end">
+                  <TxKindBadge isHogex={tx.is_hogex} hasMweb={tx.has_mweb} />
+                </span>
                 <AmountCY
                   value={tx.total_out}
-                  compact
-                  className="text-text-mute"
+                  className="justify-self-end text-right text-text-mute"
                 />
               </li>
             ))}

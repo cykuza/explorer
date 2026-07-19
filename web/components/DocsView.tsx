@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Card } from "@/components/Card";
+import { CopyButton } from "@/components/CopyButton";
 import { ErrorCard } from "@/components/ErrorCard";
 import { LEGACY_ENDPOINTS } from "@/lib/docs/legacyEndpoints";
 import {
@@ -26,30 +27,6 @@ function PathDisplay({ path }: { path: string }) {
         ),
       )}
     </span>
-  );
-}
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  const onCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setCopied(false);
-    }
-  }, [text]);
-
-  return (
-    <button
-      type="button"
-      onClick={onCopy}
-      className="text-xs text-text-dim hover:text-text-mute"
-      aria-label={copied ? "Copied" : "Copy to clipboard"}
-    >
-      {copied ? "copied" : "copy"}
-    </button>
   );
 }
 

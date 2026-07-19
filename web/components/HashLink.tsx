@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
-
+import { CopyButton } from "@/components/CopyButton";
 import {
   HASH_DISPLAY_HEAD,
   HASH_DISPLAY_TAIL,
@@ -25,22 +24,11 @@ export function HashLink({
   tail = HASH_DISPLAY_TAIL,
   className = "",
 }: HashLinkProps) {
-  const [copied, setCopied] = useState(false);
   const display = truncateMiddle(value, head, tail);
-
-  const onCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setCopied(false);
-    }
-  }, [value]);
 
   return (
     <span
-      className={`inline-flex max-w-full shrink-0 items-center gap-1.5 whitespace-nowrap font-mono text-sm ${className}`}
+      className={`inline-flex max-w-full shrink-0 items-center gap-1 whitespace-nowrap font-mono text-sm ${className}`}
     >
       {href ? (
         <a
@@ -55,15 +43,7 @@ export function HashLink({
           {display}
         </span>
       )}
-      <button
-        type="button"
-        onClick={onCopy}
-        className="shrink-0 text-xs text-text-dim hover:text-text-mute"
-        aria-label={copied ? "Copied" : "Copy to clipboard"}
-        title={copied ? "Copied" : "Copy"}
-      >
-        {copied ? "copied" : "copy"}
-      </button>
+      <CopyButton text={value} />
     </span>
   );
 }

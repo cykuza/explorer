@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 
-import { EntityShell } from "@/components/EntityShell";
+import { TxView } from "@/components/TxView";
 
 export const metadata: Metadata = {
   title: "Transaction",
 };
 
 export default function TxPage() {
-  return <EntityShell kind="tx" />;
+  return <TxView />;
 }

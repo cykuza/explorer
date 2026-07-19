@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 
-import { EntityShell } from "@/components/EntityShell";
+import { AddressView } from "@/components/AddressView";
 
 export const metadata: Metadata = {
   title: "Address",
 };
 
 export default function AddressPage() {
-  return <EntityShell kind="address" />;
+  return <AddressView />;
 }

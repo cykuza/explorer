@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { EntityShell } from "@/components/EntityShell";
+import { TxView } from "@/components/TxView";
 
 export { generateStaticParams } from "@/lib/networkStaticParams";
 
@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function NetworkTxPage() {
-  return <EntityShell kind="tx" />;
+  return <TxView />;
 }

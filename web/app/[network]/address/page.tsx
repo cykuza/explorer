@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { EntityShell } from "@/components/EntityShell";
+import { AddressView } from "@/components/AddressView";
 
 export { generateStaticParams } from "@/lib/networkStaticParams";
 
@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function NetworkAddressPage() {
-  return <EntityShell kind="address" />;
+  return <AddressView />;
 }

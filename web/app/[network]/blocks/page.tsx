@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { ComingSoon } from "@/components/ComingSoon";
+import { BlocksView } from "@/components/BlocksView";
 
 export { generateStaticParams } from "@/lib/networkStaticParams";
 
@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function NetworkBlocksPage() {
-  return <ComingSoon title="Blocks" />;
+  return <BlocksView />;
 }

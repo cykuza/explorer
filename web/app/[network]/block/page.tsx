@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { EntityShell } from "@/components/EntityShell";
+import { BlockView } from "@/components/BlockView";
 
 export { generateStaticParams } from "@/lib/networkStaticParams";
 
@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function NetworkBlockPage() {
-  return <EntityShell kind="block" />;
+  return <BlockView />;
 }

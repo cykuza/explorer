@@ -94,8 +94,86 @@ jobs:
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - run: pnpm tsc --noEmit
-      - run: pnpm next build
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm build
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.14.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Start compose stack (node + postgres + api)
+        run: docker compose -f deploy/compose.dev.yml --profile api up -d --wait
+      - name: Configure env
+        run: |
+          set -a
+          # shellcheck disable=SC1091
+          source .env.example
+          set +a
+          {
+            echo "EXPLORER_NETWORK=$EXPLORER_NETWORK"
+            echo "EXPLORER_RPC_URL=$EXPLORER_RPC_URL"
+            echo "EXPLORER_RPC_USER=$EXPLORER_RPC_USER"
+            echo "EXPLORER_RPC_PASSWORD=$EXPLORER_RPC_PASSWORD"
+            echo "EXPLORER_ZMQ_RAWBLOCK=$EXPLORER_ZMQ_RAWBLOCK"
+            echo "EXPLORER_ZMQ_HASHTX=$EXPLORER_ZMQ_HASHTX"
+            echo "EXPLORER_DB_URL=$EXPLORER_DB_URL"
+            echo "EXPLORER_DB_SCHEMA=$EXPLORER_DB_SCHEMA"
+            echo "EXPLORER_SYNC_POLL_INTERVAL_SEC=$EXPLORER_SYNC_POLL_INTERVAL_SEC"
+            echo "EXPLORER_MAX_REORG_DEPTH=$EXPLORER_MAX_REORG_DEPTH"
+            echo "EXPLORER_API_NETWORKS=$EXPLORER_API_NETWORKS"
+            echo "EXPLORER_API_MAX_LAG=$EXPLORER_API_MAX_LAG"
+            echo "EXPLORER_REGTEST_RPC_URL=$EXPLORER_REGTEST_RPC_URL"
+            echo "EXPLORER_REGTEST_RPC_USER=$EXPLORER_REGTEST_RPC_USER"
+            echo "EXPLORER_REGTEST_RPC_PASSWORD=$EXPLORER_REGTEST_RPC_PASSWORD"
+            echo "PLAYWRIGHT_BASE_URL=http://localhost:3000"
+            echo "PLAYWRIGHT_API_BASE=http://127.0.0.1:8080"
+          } >> "$GITHUB_ENV"
+      - name: Install backend
+        working-directory: backend
+        run: uv sync --frozen
+      - name: Install web + Playwright
+        working-directory: web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+      - name: Start Next.js dev server
+        working-directory: web
+        run: |
+          pnpm dev &
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:3000 >/dev/null; then
+              echo "dev server ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "dev server failed to start"
+          exit 1
+      - name: Run Playwright e2e
+        working-directory: web
+        run: pnpm test:e2e
+      - name: Compose logs on failure
+        if: failure()
+        run: docker compose -f deploy/compose.dev.yml --profile api logs --tail=200
+      - name: Tear down compose
+        if: always()
+        run: docker compose -f deploy/compose.dev.yml --profile api down -v
 
   compose-validate:
     runs-on: ubuntu-latest

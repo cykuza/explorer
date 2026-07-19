@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "export",
+  // Playwright and some CI healthchecks use 127.0.0.1; Next 16 blocks that host by default.
+  allowedDevOrigins: ["127.0.0.1"],
   async rewrites() {
     return {
       beforeFiles: [

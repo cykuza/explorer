@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 
-import { ComingSoon } from "@/components/ComingSoon";
+import { BlocksView } from "@/components/BlocksView";
 
 export const metadata: Metadata = {
   title: "Blocks",
 };
 
 export default function BlocksPage() {
-  return <ComingSoon title="Blocks" />;
+  return <BlocksView />;
 }

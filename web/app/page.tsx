@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
 
-import { ComingSoon } from "@/components/ComingSoon";
+import { DashboardView } from "@/components/DashboardView";
 
 export const metadata: Metadata = {
   title: "Dashboard",
 };
 
 export default function HomePage() {
-  return <ComingSoon title="Dashboard" />;
+  return (
+    <div>
+      <h1 className="mb-4 font-accent text-4xl tracking-tight text-text-bright">
+        Dashboard
+      </h1>
+      <DashboardView />
+    </div>
+  );
 }

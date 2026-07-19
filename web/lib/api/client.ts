@@ -3,6 +3,19 @@
  * OpenAPI types live in `./schema` (generated — do not edit by hand).
  */
 
+import type { components } from "./schema";
+
+export type TipResponse = components["schemas"]["TipResponse"];
+export type BlockSummary = components["schemas"]["BlockSummary"];
+export type BlockDetail = components["schemas"]["BlockDetail"];
+export type BlockTxPage = components["schemas"]["BlockTxPage"];
+export type TxDetail = components["schemas"]["TxDetail"];
+export type AddressStatsResponse = components["schemas"]["AddressStatsResponse"];
+export type AddressTxPage = components["schemas"]["AddressTxPage"];
+export type MempoolInfo = components["schemas"]["MempoolInfo"];
+export type MempoolTxids = components["schemas"]["MempoolTxids"];
+export type MwebSummary = components["schemas"]["MwebSummary"];
+
 export type ProblemDetails = {
   type: string;
   title: string;
@@ -146,4 +159,96 @@ export async function fetchHealth(): Promise<HealthResponse> {
     throw result.data;
   }
   return result.data;
+}
+
+function qs(params: Record<string, string | number | undefined | null>): string {
+  const sp = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null) {
+      continue;
+    }
+    sp.set(key, String(value));
+  }
+  const s = sp.toString();
+  return s ? `?${s}` : "";
+}
+
+export async function fetchTip(network: string): Promise<TipResponse> {
+  return fetchApi<TipResponse>(`/api/v1/${network}/tip`);
+}
+
+export async function fetchBlocks(
+  network: string,
+  opts?: { before?: number | null; limit?: number },
+): Promise<BlockSummary[]> {
+  return fetchApi<BlockSummary[]>(
+    `/api/v1/${network}/blocks${qs({ before: opts?.before, limit: opts?.limit })}`,
+  );
+}
+
+export async function fetchBlock(
+  network: string,
+  blockId: string,
+): Promise<BlockDetail> {
+  return fetchApi<BlockDetail>(
+    `/api/v1/${network}/block/${encodeURIComponent(blockId)}`,
+  );
+}
+
+export async function fetchBlockTxs(
+  network: string,
+  blockId: string,
+  opts?: { page?: number; per_page?: number },
+): Promise<BlockTxPage> {
+  return fetchApi<BlockTxPage>(
+    `/api/v1/${network}/block/${encodeURIComponent(blockId)}/txs${qs({
+      page: opts?.page,
+      per_page: opts?.per_page,
+    })}`,
+  );
+}
+
+export async function fetchTx(network: string, txid: string): Promise<TxDetail> {
+  return fetchApi<TxDetail>(
+    `/api/v1/${network}/tx/${encodeURIComponent(txid)}`,
+  );
+}
+
+export async function fetchAddress(
+  network: string,
+  addr: string,
+): Promise<AddressStatsResponse> {
+  return fetchApi<AddressStatsResponse>(
+    `/api/v1/${network}/address/${encodeURIComponent(addr)}`,
+  );
+}
+
+export async function fetchAddressTxs(
+  network: string,
+  addr: string,
+  opts?: { page?: number; per_page?: number },
+): Promise<AddressTxPage> {
+  return fetchApi<AddressTxPage>(
+    `/api/v1/${network}/address/${encodeURIComponent(addr)}/txs${qs({
+      page: opts?.page,
+      per_page: opts?.per_page,
+    })}`,
+  );
+}
+
+export async function fetchMempool(network: string): Promise<MempoolInfo> {
+  return fetchApi<MempoolInfo>(`/api/v1/${network}/mempool`);
+}
+
+export async function fetchMempoolTxs(
+  network: string,
+  opts?: { limit?: number },
+): Promise<MempoolTxids> {
+  return fetchApi<MempoolTxids>(
+    `/api/v1/${network}/mempool/txs${qs({ limit: opts?.limit })}`,
+  );
+}
+
+export async function fetchMwebSummary(network: string): Promise<MwebSummary> {
+  return fetchApi<MwebSummary>(`/api/v1/${network}/mweb/summary`);
 }

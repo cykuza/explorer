@@ -548,6 +548,8 @@ export interface components {
             } | null;
             /** Ismweb */
             ismweb?: boolean | null;
+            /** Spent By Txid */
+            spent_by_txid?: string | null;
         } & {
             [key: string]: unknown;
         };

@@ -5,7 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { Button } from "@/components/Button";
 import { ApiError, searchEntity } from "@/lib/api/client";
-import { activeNetworkFromPathname, entityHref } from "@/lib/networks";
+import {
+  activeNetworkFromPathname,
+  entityHref,
+  networkHref,
+} from "@/lib/networks";
+
+const MWEB_ADDR_PREFIX = /^(cymweb1|tmweb)/i;
 
 export function SearchBar() {
   const router = useRouter();
@@ -28,6 +34,10 @@ export function SearchBar() {
       router.push(entityHref(network, hit.type, hit.id));
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) {
+        if (MWEB_ADDR_PREFIX.test(q)) {
+          router.push(`${networkHref(network, "/mweb")}#address`);
+          return;
+        }
         setError("not found");
       } else if (err instanceof ApiError) {
         setError(err.detail || err.title);

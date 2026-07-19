@@ -45,14 +45,40 @@ function spkType(spk: unknown): string | null {
   return typeof t === "string" ? t : null;
 }
 
-function spentStatus(vout: Record<string, unknown>): string | null {
-  if ("spent" in vout && typeof vout.spent === "boolean") {
-    return vout.spent ? "spent" : "unspent";
+function SpentChip({
+  spentByTxid,
+  network,
+}: {
+  spentByTxid: string | null | undefined;
+  network: string;
+}) {
+  if (spentByTxid === undefined) {
+    return null;
   }
-  if ("spent_by_txid" in vout) {
-    return vout.spent_by_txid ? "spent" : "unspent";
+  if (spentByTxid == null) {
+    return (
+      <span
+        className="rounded-sm border border-metal/50 px-1.5 py-0.5 text-xs text-text-bright"
+        data-testid="tx-vout-unspent"
+      >
+        unspent
+      </span>
+    );
   }
-  return null;
+  const short =
+    spentByTxid.length > 12
+      ? `${spentByTxid.slice(0, 4)}…${spentByTxid.slice(-4)}`
+      : spentByTxid;
+  return (
+    <a
+      href={entityHref(network, "tx", spentByTxid)}
+      className="rounded-sm border border-surface-3 px-1.5 py-0.5 font-mono text-xs text-text-dim hover:border-text-dim hover:text-text-mute"
+      data-testid="tx-vout-spent"
+      title={spentByTxid}
+    >
+      spent · {short}
+    </a>
+  );
 }
 
 export function TxView() {
@@ -233,10 +259,8 @@ function TxViewInner({ network, txid }: { network: string; txid: string }) {
           </h2>
           <ul className="space-y-2">
             {tx.vout.map((vout) => {
-              const record = vout as Record<string, unknown>;
               const addr = spkAddress(vout.scriptPubKey);
               const typ = spkType(vout.scriptPubKey);
-              const spent = spentStatus(record);
               return (
                 <li
                   key={vout.n}
@@ -258,10 +282,13 @@ function TxViewInner({ network, txid }: { network: string; txid: string }) {
                       <AmountCY value={vout.value} className="text-text-mute" />
                     ) : null}
                   </div>
-                  <div className="mt-0.5 flex flex-wrap gap-2 text-xs text-text-dim">
+                  <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-text-dim">
                     <span>#{vout.n}</span>
                     {typ ? <span>{typ}</span> : null}
-                    {spent ? <span>{spent}</span> : null}
+                    <SpentChip
+                      spentByTxid={vout.spent_by_txid}
+                      network={network}
+                    />
                     {vout.ismweb ? (
                       <span className="opacity-60">ismweb</span>
                     ) : null}

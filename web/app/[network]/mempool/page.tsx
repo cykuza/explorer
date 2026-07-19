@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { ComingSoon } from "@/components/ComingSoon";
+import { MempoolView } from "@/components/MempoolView";
 
 export { generateStaticParams } from "@/lib/networkStaticParams";
 
@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function NetworkMempoolPage() {
-  return <ComingSoon title="Mempool" />;
+  return <MempoolView />;
 }

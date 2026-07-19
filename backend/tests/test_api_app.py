@@ -204,6 +204,29 @@ def stub_rpc() -> AsyncMock:
             return ["mp" + "0" * 62, "mp" + "1" * 62]
         if method == "getrawtransaction":
             txid = str(params[0])
+            if txid == COINBASE0:
+                return {
+                    "txid": COINBASE0,
+                    "hash": COINBASE0,
+                    "version": 1,
+                    "size": 100,
+                    "vsize": 100,
+                    "weight": 400,
+                    "locktime": 0,
+                    "vin": [{"coinbase": "01", "sequence": 0xFFFFFFFF}],
+                    "vout": [
+                        {
+                            "n": 0,
+                            "value": Decimal("50"),
+                            "scriptPubKey": _spk("alice"),
+                        },
+                    ],
+                    "hex": "0100",
+                    "blockhash": GENESIS,
+                    "confirmations": 2,
+                    "time": 1_700_000_000,
+                    "blocktime": 1_700_000_000,
+                }
             if txid == HOGEX_TX:
                 return {
                     "txid": HOGEX_TX,
@@ -357,6 +380,19 @@ async def test_tx_hogex(api_client: AsyncClient) -> None:
     assert body["confirmations"] == 1
     assert body["vin"][0]["prevout"]["address"] == "miner"
     assert body["fee"] is not None
+    assert "spent_by_txid" in body["vout"][0]
+    assert body["vout"][1]["spent_by_txid"] is None
+
+
+@pytest.mark.asyncio
+async def test_tx_spent_by_txid(api_client: AsyncClient) -> None:
+    spent = await api_client.get(f"/api/v1/regtest/tx/{COINBASE0}")
+    assert spent.status_code == 200
+    assert spent.json()["vout"][0]["spent_by_txid"] == SPEND_TX
+
+    unspent = await api_client.get(f"/api/v1/regtest/tx/{SPEND_TX}")
+    assert unspent.status_code == 200
+    assert unspent.json()["vout"][0]["spent_by_txid"] is None
 
 
 @pytest.mark.asyncio

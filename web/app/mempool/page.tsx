@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 
-import { ComingSoon } from "@/components/ComingSoon";
+import { MempoolView } from "@/components/MempoolView";
 
 export const metadata: Metadata = {
   title: "Mempool",
 };
 
 export default function MempoolPage() {
-  return <ComingSoon title="Mempool" />;
+  return <MempoolView />;
 }

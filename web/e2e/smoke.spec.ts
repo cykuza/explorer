@@ -83,4 +83,26 @@ test("smoke: home → block → tx → address → search", async ({ page }) => 
   await expect(page).toHaveURL(new RegExp(`/block/${height}`));
   await expect(page.getByTestId("block-page")).toBeVisible();
   await expect(page.getByRole("heading", { name: `Block ${height}` })).toBeVisible();
+
+  // 6. MWEB page shows mweb_amount
+  await page.goto("/mweb");
+  await expect(page.getByTestId("mweb-page")).toBeVisible();
+  await expect(page.getByTestId("mweb-amount")).toBeVisible();
+  const mwebAmt = (await page.getByTestId("mweb-amount").innerText()).trim();
+  expect(mwebAmt.length).toBeGreaterThan(0);
+
+  // 7. Charts page renders SVG path for difficulty
+  await page.goto("/charts?metric=difficulty&range=all");
+  await expect(page.getByTestId("charts-page")).toBeVisible();
+  const chartPath = page.getByTestId("chart-path");
+  await expect(chartPath).toBeVisible();
+  const d = await chartPath.getAttribute("d");
+  expect(d && d.length).toBeGreaterThan(1);
+
+  // 8. Mempool page shows count
+  await page.goto("/mempool");
+  await expect(page.getByTestId("mempool-page")).toBeVisible();
+  const mpCount = page.getByTestId("mempool-count");
+  await expect(mpCount).toBeVisible();
+  expect(Number((await mpCount.innerText()).trim())).toBeGreaterThanOrEqual(0);
 });

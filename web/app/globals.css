@@ -1,12 +1,19 @@
 @import "tailwindcss";
 
 @font-face {
-  font-family: "Pixeloperatormono";
-  /* Self-hosted subset-friendly weight: system mono fallback until optional local file is added. */
-  src: local("Pixeloperatormono"), local("Menlo"), local("Monaco"), local("Consolas");
+  font-family: "Hack";
+  src: url("/fonts/hack-regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Hack";
+  src: url("/fonts/hack-bold.woff2") format("woff2");
   font-weight: 700;
   font-style: normal;
-  font-display: optional;
+  font-display: swap;
 }
 
 @theme {
@@ -20,9 +27,9 @@
   --color-text-bright: #fff;
   --color-metal: #b8bec6;
 
-  --font-accent: "Pixeloperatormono", ui-monospace, SFMono-Regular, Menlo,
-    Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+  --font-accent: "Hack", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  --font-mono: "Hack", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
 }
 

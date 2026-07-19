@@ -310,6 +310,19 @@ async def get_tx(
                     _as_decimal(o.value),
                 )
 
+        spend_rows = (
+            await conn.execute(
+                select(
+                    tables.outputs.c.n,
+                    tables.outputs.c.spent_by_txid,
+                ).where(tables.outputs.c.txid == txid),
+            )
+        ).all()
+        spent_by: dict[int, str | None] = {
+            int(r.n): str(r.spent_by_txid) if r.spent_by_txid is not None else None
+            for r in spend_rows
+        }
+
     vins: list[TxVin] = []
     for vin in raw.get("vin", []):
         if not isinstance(vin, dict):
@@ -337,13 +350,15 @@ async def get_tx(
     for vout in raw.get("vout", []):
         if not isinstance(vout, dict):
             continue
+        n = int(vout.get("n", 0))
         value_raw = vout.get("value")
         vouts.append(
             TxVout(
-                n=int(vout.get("n", 0)),
+                n=n,
                 value=decimal_str(_as_decimal(value_raw)) if value_raw is not None else None,
                 scriptPubKey=vout.get("scriptPubKey"),
                 ismweb=bool(vout["ismweb"]) if "ismweb" in vout else None,
+                spent_by_txid=spent_by.get(n),
             ),
         )
 

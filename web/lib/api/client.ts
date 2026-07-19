@@ -15,6 +15,8 @@ export type AddressTxPage = components["schemas"]["AddressTxPage"];
 export type MempoolInfo = components["schemas"]["MempoolInfo"];
 export type MempoolTxids = components["schemas"]["MempoolTxids"];
 export type MwebSummary = components["schemas"]["MwebSummary"];
+export type ChartPoint = components["schemas"]["ChartPoint"];
+export type ChartMetric = "difficulty" | "tx_count" | "fees" | "mweb_amount";
 
 export type ProblemDetails = {
   type: string;
@@ -251,4 +253,17 @@ export async function fetchMempoolTxs(
 
 export async function fetchMwebSummary(network: string): Promise<MwebSummary> {
   return fetchApi<MwebSummary>(`/api/v1/${network}/mweb/summary`);
+}
+
+export async function fetchCharts(
+  network: string,
+  opts: { metric: ChartMetric; from: number; to: number },
+): Promise<ChartPoint[]> {
+  return fetchApi<ChartPoint[]>(
+    `/api/v1/${network}/stats/charts${qs({
+      metric: opts.metric,
+      from: opts.from,
+      to: opts.to,
+    })}`,
+  );
 }

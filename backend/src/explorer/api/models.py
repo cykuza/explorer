@@ -114,6 +114,7 @@ class TxVout(BaseModel):
     value: str | None = None
     scriptPubKey: dict[str, Any] | None = None
     ismweb: bool | None = None
+    spent_by_txid: str | None = None
 
 
 class TxDetail(BaseModel):

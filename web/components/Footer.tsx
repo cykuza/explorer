@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import pkg from "../package.json";
 
 export function Footer() {
@@ -14,11 +16,9 @@ export function Footer() {
           >
             GitHub
           </a>
-          {/* Proxied to the API (not a Next.js page). */}
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-          <a href="/api/v1/docs" className="hover:text-text-mute">
+          <Link href="/docs" className="hover:text-text-mute">
             API docs
-          </a>
+          </Link>
         </nav>
       </div>
     </footer>

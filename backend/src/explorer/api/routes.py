@@ -116,7 +116,7 @@ async def _resolve_block_id(ctx: NetworkContext, block_id: str) -> Any:
     return row
 
 
-@router.get("/{network}/tip", response_model=TipResponse)
+@router.get("/{network}/tip", response_model=TipResponse, tags=["tip"])
 async def get_tip(
     ctx: NetworkCtx,
 ) -> TipResponse:
@@ -132,7 +132,7 @@ async def get_tip(
     return TipResponse(height=height, hash=tip_hash, time=int(block.time))
 
 
-@router.get("/{network}/blocks", response_model=list[BlockSummary])
+@router.get("/{network}/blocks", response_model=list[BlockSummary], tags=["blocks"])
 async def list_blocks(
     ctx: NetworkCtx,
     before: int | None = Query(default=None),
@@ -179,7 +179,7 @@ async def list_blocks(
     ]
 
 
-@router.get("/{network}/block/{block_id}", response_model=BlockDetail)
+@router.get("/{network}/block/{block_id}", response_model=BlockDetail, tags=["block"])
 async def get_block(
     block_id: str,
     ctx: NetworkCtx,
@@ -217,7 +217,11 @@ async def get_block(
     )
 
 
-@router.get("/{network}/block/{block_id}/txs", response_model=BlockTxPage)
+@router.get(
+    "/{network}/block/{block_id}/txs",
+    response_model=BlockTxPage,
+    tags=["block"],
+)
 async def get_block_txs(
     block_id: str,
     ctx: NetworkCtx,
@@ -264,7 +268,7 @@ async def get_block_txs(
     )
 
 
-@router.get("/{network}/tx/{txid}", response_model=TxDetail)
+@router.get("/{network}/tx/{txid}", response_model=TxDetail, tags=["tx"])
 async def get_tx(
     txid: str,
     ctx: NetworkCtx,
@@ -387,7 +391,11 @@ async def get_tx(
     )
 
 
-@router.get("/{network}/address/{addr}", response_model=AddressStatsResponse)
+@router.get(
+    "/{network}/address/{addr}",
+    response_model=AddressStatsResponse,
+    tags=["address"],
+)
 async def get_address(
     addr: str,
     ctx: NetworkCtx,
@@ -411,7 +419,11 @@ async def get_address(
     )
 
 
-@router.get("/{network}/address/{addr}/txs", response_model=AddressTxPage)
+@router.get(
+    "/{network}/address/{addr}/txs",
+    response_model=AddressTxPage,
+    tags=["address"],
+)
 async def get_address_txs(
     addr: str,
     ctx: NetworkCtx,
@@ -517,7 +529,7 @@ async def get_address_txs(
     return AddressTxPage(total=total, page=page, per_page=per_page, txs=items)
 
 
-@router.get("/{network}/mempool", response_model=MempoolInfo)
+@router.get("/{network}/mempool", response_model=MempoolInfo, tags=["mempool"])
 async def get_mempool(
     ctx: NetworkCtx,
 ) -> MempoolInfo:
@@ -534,7 +546,7 @@ async def get_mempool(
     )
 
 
-@router.get("/{network}/mempool/txs", response_model=MempoolTxids)
+@router.get("/{network}/mempool/txs", response_model=MempoolTxids, tags=["mempool"])
 async def get_mempool_txs(
     ctx: NetworkCtx,
     limit: int = Query(default=50, ge=1, le=1000),
@@ -546,7 +558,7 @@ async def get_mempool_txs(
     return MempoolTxids(txids=txids)
 
 
-@router.get("/{network}/mweb/summary", response_model=MwebSummary)
+@router.get("/{network}/mweb/summary", response_model=MwebSummary, tags=["mweb"])
 async def get_mweb_summary(
     ctx: NetworkCtx,
 ) -> MwebSummary:
@@ -585,7 +597,7 @@ async def get_mweb_summary(
     )
 
 
-@router.get("/{network}/stats/charts", response_model=list[ChartPoint])
+@router.get("/{network}/stats/charts", response_model=list[ChartPoint], tags=["stats"])
 async def get_charts(
     ctx: NetworkCtx,
     metric: Annotated[ChartMetric, Query()],
@@ -648,7 +660,7 @@ async def get_charts(
     return [ChartPoint(height=h, time=t, value=str(int(v))) for h, t, v in down]
 
 
-@router.get("/{network}/search/{q}", response_model=SearchHit)
+@router.get("/{network}/search/{q}", response_model=SearchHit, tags=["search"])
 async def search(
     q: str,
     ctx: NetworkCtx,
@@ -717,7 +729,7 @@ async def search(
 health_router = APIRouter()
 
 
-@health_router.get("/healthz", response_model=HealthResponse)
+@health_router.get("/healthz", response_model=HealthResponse, tags=["health"])
 async def healthz(request: Request) -> HealthResponse | JSONResponse:
     settings: ApiSettings = get_api_settings(request)
     contexts = get_contexts(request)

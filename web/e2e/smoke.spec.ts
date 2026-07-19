@@ -106,4 +106,10 @@ test("smoke: home → block → tx → address → search", async ({ page }) => 
   const mpCount = page.getByTestId("mempool-count");
   await expect(mpCount).toBeVisible();
   expect(Number((await mpCount.innerText()).trim())).toBeGreaterThanOrEqual(0);
+
+  // 9. API docs: ≥1 GET endpoint row + legacy section
+  await page.goto("/docs");
+  await expect(page.getByTestId("docs-page")).toBeVisible();
+  await expect(page.getByTestId("docs-endpoint").first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Legacy/i })).toBeVisible();
 });

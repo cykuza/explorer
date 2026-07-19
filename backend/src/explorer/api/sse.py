@@ -112,7 +112,7 @@ async def _event_stream(
             _active_stream_tasks.discard(task)
 
 
-@router.get("/{network}/events")
+@router.get("/{network}/events", tags=["events"])
 async def network_events(
     request: Request,
     ctx: NetworkCtx,

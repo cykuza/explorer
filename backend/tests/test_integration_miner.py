@@ -82,8 +82,7 @@ async def test_miner_bootstrap_or_steady(rpc: RpcClient, settings: Settings) -> 
         else:
             path = "steady"
             print(
-                f"MINER_INTEGRATION_PATH={path} tip={tip} activation={activation} "
-                f"mode={mode}",
+                f"MINER_INTEGRATION_PATH={path} tip={tip} activation={activation} mode={mode}",
             )
             # If still in bootstrap past activation, advance with miner ticks until
             # steady, then mine exactly one steady block — or mine one bootstrap

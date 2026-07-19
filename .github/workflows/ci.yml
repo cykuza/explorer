@@ -318,7 +318,7 @@ jobs:
             ssh-keyscan -p "${PORT}" -t ed25519 "${DEPLOY_SSH_HOST}" >> ~/.ssh/known_hosts
           fi
           chmod 644 ~/.ssh/known_hosts
-      - name: Rsync deploy files
+      - name: Copy deploy files
         if: steps.gate.outputs.ready == 'true'
         env:
           DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
@@ -326,7 +326,8 @@ jobs:
           DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
         run: |
           PORT="${DEPLOY_SSH_PORT:-22}"
-          rsync -avz -e "ssh -p ${PORT}" \
+          # scp only needs OpenSSH on the host (rsync is often not installed).
+          scp -P "${PORT}" -r \
             deploy/compose.prod.yml \
             deploy/README.md \
             deploy/nginx \

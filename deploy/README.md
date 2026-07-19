@@ -44,7 +44,7 @@ Images are pulled from GHCR (no local `build:`):
 
 ### Env file
 
-On the server the compose file and `.env.prod` live under `/opt/explorer/` (CD rsyncs compose + nginx configs there). Locally:
+On the server the compose file and `.env.prod` live under `/opt/explorer/` (CD copies compose + nginx configs there over SSH). Locally:
 
 ```bash
 cp deploy/.env.prod.example deploy/.env.prod
@@ -87,7 +87,7 @@ Resource notes (4 vCPU / 8 GB host): mainnet node `-dbcache=1536` / `-maxmempool
 On every push to `master`, CI runs the usual gates, then:
 
 1. **`publish`** — buildx build+push `explorer-backend` and `explorer-web` to GHCR (`latest` + `${{ github.sha }}`). `cyberyend:0.21.6.1` is rebuilt only when `deploy/docker/cyberyend.Dockerfile` changes.
-2. **`deploy`** — on master after publish: if required SSH secrets are set, rsync compose/nginx/README to `/opt/explorer/`, then `pull` + `up -d` with `EXPLORER_TAG=<sha>`, then `curl -fsS localhost/healthz` (10 attempts with backoff). If secrets are absent, the job still runs but skips deploy steps and succeeds.
+2. **`deploy`** — on master after publish: if required SSH secrets are set, `scp` compose/nginx/README to `/opt/explorer/`, then `pull` + `up -d` with `EXPLORER_TAG=<sha>`, then `curl -fsS localhost/healthz` (10 attempts with backoff). If secrets are absent, the job still runs but skips deploy steps and succeeds. The host needs OpenSSH only (no `rsync` package).
 
 Required repository secrets (Settings → Secrets and variables → Actions):
 
@@ -96,7 +96,7 @@ Required repository secrets (Settings → Secrets and variables → Actions):
 | `DEPLOY_SSH_HOST` | Server hostname or IP |
 | `DEPLOY_SSH_USER` | SSH user (e.g. `deploy`) |
 | `DEPLOY_SSH_KEY` | Private key for that user |
-| `DEPLOY_SSH_PORT` | Optional. SSH port (default `22` when unset). Threaded into rsync (`-e "ssh -p …"`), `ssh -p`, and keyscan. |
+| `DEPLOY_SSH_PORT` | Optional. SSH port (default `22` when unset). Threaded into `scp -P`, `ssh -p`, and keyscan. |
 | `DEPLOY_SSH_HOST_KEY` | Optional. Server’s `ssh-ed25519` public host key line (pinned into `known_hosts`). If unset, CD falls back to `ssh-keyscan` at deploy time. |
 
 Pin the host key once (preferred): on a trusted machine run `ssh-keyscan -p <port> -t ed25519 <host>` (omit `-p` when using port 22), verify the fingerprint out-of-band against the server, then store that single line as `DEPLOY_SSH_HOST_KEY`. For a non-standard port, keyscan emits a **bracketed** line (`[host]:port ssh-ed25519 …`) — store that form verbatim; OpenSSH will not match a bare `host ssh-ed25519 …` entry when connecting on a non-22 port.

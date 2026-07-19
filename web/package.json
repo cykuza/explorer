@@ -11,7 +11,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "gen:api": "openapi-typescript http://127.0.0.1:8080/api/v1/openapi.json -o lib/api/schema.d.ts"
   },
   "dependencies": {
     "next": "16.2.10",
@@ -20,11 +21,12 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "openapi-typescript": "^7",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

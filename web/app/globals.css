@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Pixeloperatormono";
+  src: url("https://cdn.shopify.com/s/files/1/2642/6578/files/PPNeueBit-Bold.woff")
+    format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
   --color-bg: #000;
   --color-surface-1: #202020;
@@ -9,6 +18,11 @@
   --color-text-mute: #b1b1b1;
   --color-text: #e3e3e3;
   --color-text-bright: #fff;
+
+  --font-accent: "Pixeloperatormono", ui-monospace, SFMono-Regular, Menlo,
+    Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
 }
 
 html,
@@ -20,4 +34,6 @@ body {
   background-color: var(--color-bg);
   color: var(--color-text);
   margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+    sans-serif;
 }

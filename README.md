@@ -22,6 +22,38 @@ cd ../web && pnpm install && pnpm next build
 
 See `.env.example` for configuration.
 
+## Development
+
+Start Postgres + regtest node, then the API (port 8080):
+
+```bash
+docker compose -f deploy/compose.dev.yml --profile api up -d
+```
+
+Run the web UI (dev server proxies `/api/*` and `/healthz` to `127.0.0.1:8080`, and pretty entity URLs to shell pages):
+
+```bash
+cd web
+pnpm install
+pnpm dev
+```
+
+`NEXT_PUBLIC_NETWORKS` is a comma-separated list (first entry is the default network at root paths). When unset, it defaults to `regtest`.
+
+Regenerate TypeScript types from the live OpenAPI document (API must be up):
+
+```bash
+cd web && pnpm gen:api
+```
+
+Typecheck / production static export:
+
+```bash
+cd web && pnpm typecheck && pnpm build
+```
+
+Deploy notes (nginx rewrite map for shell pages): [`deploy/README.md`](deploy/README.md).
+
 ## Documentation
 
 Operator and developer notes: [`docs/`](docs/).

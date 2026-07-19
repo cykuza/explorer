@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { ComingSoon } from "@/components/ComingSoon";
 
 export const metadata: Metadata = {
-  title: "Dashboard",
+  title: "Mempool",
 };
 
-export default function HomePage() {
-  return <ComingSoon title="Dashboard" />;
+export default function MempoolPage() {
+  return <ComingSoon title="Mempool" />;
 }

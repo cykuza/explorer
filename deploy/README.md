@@ -115,7 +115,7 @@ Required repository secrets (Settings → Secrets and variables → Actions):
 
 Pin the host key once (preferred): on a trusted machine run `ssh-keyscan -p <port> -t ed25519 <host>` (omit `-p` when using port 22), verify the fingerprint out-of-band against the server, then store that single line as `DEPLOY_SSH_HOST_KEY`. For a non-standard port, keyscan emits a **bracketed** line (`[host]:port ssh-ed25519 …`) — store that form verbatim; OpenSSH will not match a bare `host ssh-ed25519 …` entry when connecting on a non-22 port.
 
-Images on GHCR are public; the server does not need registry login to pull.
+Images on GHCR may default to **private** on first publish. CD authenticates `docker pull` on the VPS with the job’s `GITHUB_TOKEN`. Optionally make packages public once (Package settings → Change visibility → Public) for each of `explorer-backend`, `explorer-web`, and `cyberyend` so anonymous pulls also work. The publish job attempts to set public via API when GitHub allows it.
 
 **Tag scheme:** explorer images get `latest` and the git SHA. CD sets `EXPLORER_TAG=<sha>` on the compose command line without rewriting `.env.prod`. Cyberyend stays on `0.21.6.1` (`CYBERYEND_TAG`).
 

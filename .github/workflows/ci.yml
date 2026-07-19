@@ -278,6 +278,24 @@ jobs:
           tags: |
             ghcr.io/cykuza/cyberyend:0.21.6.1
 
+      - name: Make GHCR packages public (best-effort)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Org packages default to private; anonymous VPS pulls need public
+          # visibility. API support varies — ignore failures and rely on
+          # docker login during deploy (and/or a one-time UI change).
+          org="${{ github.repository_owner }}"
+          for pkg in explorer-backend explorer-web cyberyend; do
+            echo "Attempting to set ghcr.io/${org}/${pkg} public..."
+            gh api --method PATCH \
+              -H "Accept: application/vnd.github+json" \
+              "/orgs/${org}/packages/container/${pkg}" \
+              -f visibility=public \
+              && echo "OK: ${pkg}" \
+              || echo "WARN: could not set ${pkg} public (set via Package settings UI if needed)"
+          done
+
   deploy:
     needs: [backend, integration, web, e2e, compose-validate, prod-validate, publish]
     if: github.ref == 'refs/heads/master'
@@ -358,12 +376,23 @@ jobs:
           DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
           DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
           DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PORT="${DEPLOY_SSH_PORT:-22}"
           ssh -p "${PORT}" "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
-            "cd /opt/explorer && \
-             EXPLORER_TAG=${{ github.sha }} docker compose -f compose.prod.yml --env-file .env.prod pull && \
-             EXPLORER_TAG=${{ github.sha }} docker compose -f compose.prod.yml --env-file .env.prod up -d --remove-orphans"
+            env EXPLORER_TAG="${{ github.sha }}" GHCR_USER="$GHCR_USER" GHCR_TOKEN="$GHCR_TOKEN" \
+            bash -s <<'EOF'
+          set -euo pipefail
+          # GHCR packages are private until made public; authenticate pulls with
+          # the Actions GITHUB_TOKEN (linked to this repo's packages).
+          echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
+          cleanup() { docker logout ghcr.io >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          cd /opt/explorer
+          EXPLORER_TAG="${EXPLORER_TAG}" docker compose -f compose.prod.yml --env-file .env.prod pull
+          EXPLORER_TAG="${EXPLORER_TAG}" docker compose -f compose.prod.yml --env-file .env.prod up -d --remove-orphans
+          EOF
       - name: Healthcheck
         if: |
           steps.gate.outputs.ready == 'true'

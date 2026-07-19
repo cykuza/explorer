@@ -91,13 +91,14 @@ test("smoke: home → block → tx → address → search", async ({ page }) => 
   const mwebAmt = (await page.getByTestId("mweb-amount").innerText()).trim();
   expect(mwebAmt.length).toBeGreaterThan(0);
 
-  // 7. Charts page renders SVG path for difficulty
+  // 7. Charts page renders SVG path for difficulty.
+  // toBeAttached (not toBeVisible): a flat series (constant difficulty on
+  // fresh regtest) has zero path height, which Playwright treats as hidden.
   await page.goto("/charts?metric=difficulty&range=all");
   await expect(page.getByTestId("charts-page")).toBeVisible();
   const chartPath = page.getByTestId("chart-path");
-  await expect(chartPath).toBeVisible();
-  const d = await chartPath.getAttribute("d");
-  expect(d && d.length).toBeGreaterThan(1);
+  await expect(chartPath).toBeAttached();
+  await expect(chartPath).toHaveAttribute("d", /M[\d.,\sL-]+/);
 
   // 8. Mempool page shows count
   await page.goto("/mempool");

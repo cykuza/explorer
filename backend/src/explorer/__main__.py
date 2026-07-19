@@ -43,7 +43,10 @@ def main(argv: list[str] | None = None) -> int:
         configure_logging(logging.INFO)
         settings = Settings()  # type: ignore[call-arg]
         from explorer.indexer.sync import run_sync
+        from explorer.migrate import upgrade_head
 
+        # Indexer is the sole schema owner; API never migrates.
+        upgrade_head()
         try:
             asyncio.run(run_sync(settings, once=bool(args.once)))
         except KeyboardInterrupt:

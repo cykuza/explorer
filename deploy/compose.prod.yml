@@ -1,16 +1,15 @@
 # Production stack: mainnet + testnet cyberyend, Postgres, dual indexers, API, nginx.
-# Secrets live in deploy/.env.prod (copy from .env.prod.example). Never commit .env.prod.
+# Images are pulled from GHCR (built by CI on master). Secrets live in deploy/.env.prod
+# (copy from .env.prod.example). Never commit .env.prod.
 #
-#   cp deploy/.env.prod.example deploy/.env.prod   # edit secrets
-#   docker compose -f deploy/compose.prod.yml up -d
+# On the server (/opt/explorer):
+#   docker compose -f compose.prod.yml --env-file .env.prod up -d
+#
+# Tag overrides: EXPLORER_TAG (default latest), CYBERYEND_TAG (default 0.21.6.1).
 
 services:
   cyberyend-mainnet:
-    build:
-      context: ..
-      dockerfile: deploy/docker/cyberyend.Dockerfile
-      platforms:
-        - linux/amd64
+    image: ghcr.io/cykuza/cyberyend:${CYBERYEND_TAG:-0.21.6.1}
     platform: linux/amd64
     restart: unless-stopped
     command:
@@ -52,11 +51,7 @@ services:
       start_period: 120s
 
   cyberyend-testnet:
-    build:
-      context: ..
-      dockerfile: deploy/docker/cyberyend.Dockerfile
-      platforms:
-        - linux/amd64
+    image: ghcr.io/cykuza/cyberyend:${CYBERYEND_TAG:-0.21.6.1}
     platform: linux/amd64
     restart: unless-stopped
     command:
@@ -132,9 +127,7 @@ services:
       start_period: 20s
 
   indexer-mainnet:
-    build:
-      context: ..
-      dockerfile: deploy/docker/explorer.Dockerfile
+    image: ghcr.io/cykuza/explorer-backend:${EXPLORER_TAG:-latest}
     restart: unless-stopped
     command: ["explorer", "sync"]
     environment:
@@ -152,9 +145,7 @@ services:
         condition: service_healthy
 
   indexer-testnet:
-    build:
-      context: ..
-      dockerfile: deploy/docker/explorer.Dockerfile
+    image: ghcr.io/cykuza/explorer-backend:${EXPLORER_TAG:-latest}
     restart: unless-stopped
     command: ["explorer", "sync"]
     environment:
@@ -172,9 +163,7 @@ services:
         condition: service_healthy
 
   api:
-    build:
-      context: ..
-      dockerfile: deploy/docker/explorer.Dockerfile
+    image: ghcr.io/cykuza/explorer-backend:${EXPLORER_TAG:-latest}
     restart: unless-stopped
     command: ["explorer", "api", "--host", "0.0.0.0", "--port", "8080"]
     environment:
@@ -198,11 +187,7 @@ services:
         condition: service_healthy
 
   nginx:
-    build:
-      context: ..
-      dockerfile: deploy/docker/web.Dockerfile
-      args:
-        NEXT_PUBLIC_NETWORKS: mainnet,testnet
+    image: ghcr.io/cykuza/explorer-web:${EXPLORER_TAG:-latest}
     restart: unless-stopped
     ports:
       - "80:80"

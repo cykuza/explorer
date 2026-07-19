@@ -34,7 +34,17 @@ Non-default networks are emitted under `/{network}/…` at build time from `NEXT
 
 Stack file: [`compose.prod.yml`](compose.prod.yml). Services: `cyberyend-mainnet`, `cyberyend-testnet`, `postgres`, `indexer-mainnet`, `indexer-testnet`, `api`, `nginx`.
 
+Images are pulled from GHCR (no local `build:`):
+
+| Service | Image |
+|---------|--------|
+| `api`, `indexer-*` | `ghcr.io/cykuza/explorer-backend:${EXPLORER_TAG:-latest}` |
+| `nginx` | `ghcr.io/cykuza/explorer-web:${EXPLORER_TAG:-latest}` |
+| `cyberyend-*` | `ghcr.io/cykuza/cyberyend:${CYBERYEND_TAG:-0.21.6.1}` |
+
 ### Env file
+
+On the server the compose file and `.env.prod` live under `/opt/explorer/` (CD rsyncs compose + nginx configs there). Locally:
 
 ```bash
 cp deploy/.env.prod.example deploy/.env.prod
@@ -51,38 +61,57 @@ docker compose --env-file deploy/.env.prod -f deploy/compose.prod.yml …
 |----------|---------|
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Postgres + API/indexer DB URL |
 | `CYBERYEN_RPC_USER` / `CYBERYEN_RPC_PASSWORD` | Node RPC (both networks) |
+| `EXPLORER_TAG` | Explorer backend/web image tag (default `latest`) |
+| `CYBERYEND_TAG` | Cyberyend image tag (default `0.21.6.1`) |
 | `EXPLORER_DB_STATEMENT_TIMEOUT_MS` | API read-engine `statement_timeout` (default 5000) |
 | `EXPLORER_API_LIMIT_CONCURRENCY` | uvicorn `--limit-concurrency` (default 100) |
 | `EXPLORER_API_MAX_LAG` | API tip lag budget |
 
 ### Bring-up order
 
-1. Create and edit `.env.prod` as above.
-2. Start nodes + Postgres (indexed volumes, no public RPC ports):
+1. Create and edit `.env.prod` as above (on the server: `/opt/explorer/.env.prod`).
+2. Pull images and start the stack:
 
    ```bash
-   docker compose --env-file deploy/.env.prod -f deploy/compose.prod.yml \
-     up -d cyberyend-mainnet cyberyend-testnet postgres
+   cd /opt/explorer   # or from the repo: -f deploy/compose.prod.yml
+   docker compose -f compose.prod.yml --env-file .env.prod pull
+   docker compose -f compose.prod.yml --env-file .env.prod up -d
    ```
 
-3. Apply migrations for both schemas (use the indexer services — they already
-   have full `Settings` env; schema defaults to `EXPLORER_NETWORK`):
-
-   ```bash
-   docker compose --env-file deploy/.env.prod -f deploy/compose.prod.yml run --rm \
-     indexer-mainnet alembic upgrade head
-
-   docker compose --env-file deploy/.env.prod -f deploy/compose.prod.yml run --rm \
-     indexer-testnet alembic upgrade head
-   ```
-
-4. Start indexers, API, and nginx:
-
-   ```bash
-   docker compose --env-file deploy/.env.prod -f deploy/compose.prod.yml up -d
-   ```
+Each indexer runs `alembic upgrade head` for its schema (`EXPLORER_NETWORK` → schema name, unless `EXPLORER_DB_SCHEMA` is set) before `explorer sync`. The API process never migrates.
 
 Resource notes (4 vCPU / 8 GB host): mainnet node `-dbcache=1536` / `-maxmempool=300`; testnet `-dbcache=384` / `-maxmempool=100`; Postgres `shared_buffers=256MB` (+ related knobs). P2P published (`58383`, `44551`); RPC stays on the Compose network only.
+
+### Continuous deploy
+
+On every push to `master`, CI runs the usual gates, then:
+
+1. **`publish`** — buildx build+push `explorer-backend` and `explorer-web` to GHCR (`latest` + `${{ github.sha }}`). `cyberyend:0.21.6.1` is rebuilt only when `deploy/docker/cyberyend.Dockerfile` changes.
+2. **`deploy`** — if GitHub secrets below are set, rsync compose/nginx/README to `/opt/explorer/`, then `pull` + `up -d` with `EXPLORER_TAG=<sha>`, then `curl -fsS localhost/healthz` (10 attempts with backoff). If secrets are absent, the job is skipped cleanly.
+
+Required repository secrets (Settings → Secrets and variables → Actions):
+
+| Secret | Purpose |
+|--------|---------|
+| `DEPLOY_SSH_HOST` | Server hostname or IP |
+| `DEPLOY_SSH_USER` | SSH user (e.g. `deploy`) |
+| `DEPLOY_SSH_KEY` | Private key for that user |
+| `DEPLOY_SSH_HOST_KEY` | Optional. Server’s `ssh-ed25519` public host key line (pinned into `known_hosts`). If unset, CD falls back to `ssh-keyscan` at deploy time. |
+
+Pin the host key once (preferred): on a trusted machine run `ssh-keyscan -t ed25519 <host>`, verify the fingerprint out-of-band against the server, then store that single line as `DEPLOY_SSH_HOST_KEY`.
+
+Images on GHCR are public; the server does not need registry login to pull.
+
+**Tag scheme:** explorer images get `latest` and the git SHA. CD sets `EXPLORER_TAG=<sha>` on the compose command line without rewriting `.env.prod`. Cyberyend stays on `0.21.6.1` (`CYBERYEND_TAG`).
+
+**Manual rollback** (previous SHA images remain on the host after a failed deploy):
+
+```bash
+cd /opt/explorer
+EXPLORER_TAG=<previous_sha> docker compose -f compose.prod.yml --env-file .env.prod up -d
+```
+
+**First boot:** initial mainnet backfill takes hours. `/healthz` returns **503** until tip lag is within `EXPLORER_API_MAX_LAG`, so the deploy job’s healthcheck would fail. For the very first deploy, re-run the workflow via **Actions → CI → Run workflow** with **skip_healthcheck** enabled (or wait until lag is healthy and re-run without skipping).
 
 ### TLS bootstrap (certbot webroot)
 
@@ -99,7 +128,7 @@ docker run --rm -it \
 # Copy live certs into the nginx certs volume layout expected by entrypoint
 # (fullchain.pem + privkey.pem at volume root), then recreate nginx so the
 # entrypoint switches from HTTP-only to HTTPS + redirect:
-docker compose --env-file deploy/.env.prod -f deploy/compose.prod.yml \
+docker compose --env-file .env.prod -f compose.prod.yml \
   up -d --force-recreate nginx
 ```
 
@@ -112,8 +141,8 @@ Renewal cron (host), roughly monthly:
   -v explorer_certbot-www:/var/www/certbot \
   -v explorer_certs_letsencrypt:/etc/letsencrypt \
   certbot/certbot renew \
-  && docker compose --env-file /opt/explorer/deploy/.env.prod \
-       -f /opt/explorer/deploy/compose.prod.yml exec nginx nginx -s reload
+  && docker compose --env-file /opt/explorer/.env.prod \
+       -f /opt/explorer/compose.prod.yml exec nginx nginx -s reload
 ```
 
 (After the *first* cert install, recreate nginx once so the entrypoint enables the TLS server block; subsequent renewals only need `nginx -s reload` if the PEM paths are unchanged.)

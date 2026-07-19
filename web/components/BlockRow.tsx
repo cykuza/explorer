@@ -54,8 +54,6 @@ export function BlockRow({
         <HashLink
           value={block.hash}
           href={entityHref(network, "block", block.hash)}
-          head={6}
-          tail={6}
           className="hidden sm:inline-flex"
         />
       </div>

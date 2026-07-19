@@ -17,6 +17,7 @@ import {
   activeNetworkFromPathname,
   entityHref,
 } from "@/lib/networks";
+import { truncateMiddle } from "@/lib/truncateMiddle";
 
 type ScriptPubKey = {
   address?: string;
@@ -66,14 +67,11 @@ function SpentChip({
       </span>
     );
   }
-  const short =
-    spentByTxid.length > 12
-      ? `${spentByTxid.slice(0, 4)}…${spentByTxid.slice(-4)}`
-      : spentByTxid;
+  const short = truncateMiddle(spentByTxid);
   return (
     <a
       href={entityHref(network, "tx", spentByTxid)}
-      className="rounded-sm border border-surface-3 px-1.5 py-0.5 font-mono text-xs text-text-dim hover:border-text-dim hover:text-text-mute"
+      className="whitespace-nowrap rounded-sm border border-surface-3 px-1.5 py-0.5 font-mono text-xs text-text-dim hover:border-text-dim hover:text-text-mute"
       data-testid="tx-vout-spent"
       title={spentByTxid}
     >
@@ -217,8 +215,6 @@ function TxViewInner({ network, txid }: { network: string; txid: string }) {
                         <HashLink
                           value={addr}
                           href={entityHref(network, "address", addr)}
-                          head={10}
-                          tail={8}
                         />
                       ) : (
                         <span className="text-text-dim">unknown</span>
@@ -232,8 +228,6 @@ function TxViewInner({ network, txid }: { network: string; txid: string }) {
                         <HashLink
                           value={vin.txid}
                           href={entityHref(network, "tx", vin.txid)}
-                          head={6}
-                          tail={6}
                           className="text-xs"
                         />
                       ) : null}
@@ -269,8 +263,6 @@ function TxViewInner({ network, txid }: { network: string; txid: string }) {
                       <HashLink
                         value={addr}
                         href={entityHref(network, "address", addr)}
-                        head={10}
-                        tail={8}
                       />
                     ) : (
                       <span className="text-text-dim">no address</span>

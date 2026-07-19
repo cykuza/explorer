@@ -111,7 +111,7 @@ function AddressViewInner({
       <h1 className="font-accent text-2xl text-text-bright">Address</h1>
       <Card data-testid="address-header">
         <div className="mb-3">
-          <HashLink value={stats.address} head={12} tail={12} />
+          <HashLink value={stats.address} />
         </div>
         <dl className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Balance">

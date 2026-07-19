@@ -34,9 +34,7 @@ def test_find_alembic_ini_missing(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
         _find_alembic_ini()
 
 
-def test_upgrade_head_calls_alembic(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_upgrade_head_calls_alembic(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     ini = tmp_path / "alembic.ini"
     ini.write_text("[alembic]\nscript_location = migrations\n", encoding="utf-8")
     upgrade = MagicMock()

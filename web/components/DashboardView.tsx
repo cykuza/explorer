@@ -244,14 +244,14 @@ export function DashboardView() {
           <RelativeAge time={tip.time} className="text-xl text-text-bright" />
         </StatCard>
         <StatCard label="Difficulty">
-          <span className="font-mono text-lg tabular-nums text-text-bright">
+          <span className="font-mono text-sm tabular-nums text-text-bright sm:text-lg">
             {data.difficulty ?? "—"}
           </span>
         </StatCard>
         <StatCard label="Mempool">
-          <span className="font-mono text-lg tabular-nums text-text-bright">
+          <span className="font-mono text-sm tabular-nums text-text-bright sm:text-lg">
             {mempool?.count ?? 0}
-            <span className="ml-1 text-sm text-text-dim">
+            <span className="ml-1 text-xs text-text-dim sm:text-sm">
               / {mempool?.vsize ?? 0} vB
             </span>
           </span>
@@ -259,7 +259,7 @@ export function DashboardView() {
         <StatCard label="MWEB amount">
           <AmountCY
             value={data.mweb?.mweb_amount ?? "0"}
-            className="text-base text-text-bright"
+            className="text-sm text-text-bright sm:text-base"
           />
         </StatCard>
       </div>
@@ -322,9 +322,9 @@ function StatCard({
   testId?: string;
 }) {
   return (
-    <Card data-testid={testId} className="min-h-[4.5rem]">
+    <Card data-testid={testId} className="min-h-[4.5rem] min-w-0 overflow-hidden">
       <p className="text-xs uppercase tracking-wide text-text-dim">{label}</p>
-      <div className="mt-1 min-h-8">{children}</div>
+      <div className="mt-1 min-h-8 min-w-0 break-all">{children}</div>
     </Card>
   );
 }

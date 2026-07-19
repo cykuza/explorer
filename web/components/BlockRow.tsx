@@ -8,6 +8,10 @@ import type { components } from "@/lib/api/schema";
 
 export type BlockSummary = components["schemas"]["BlockSummary"];
 
+/** Mobile: Height | Age | Txs | Fees. sm+: + Size; Hash via HashLink. */
+const BLOCK_ROW_GRID =
+  "grid grid-cols-[4.5rem_3.25rem_2.5rem_minmax(0,1fr)] items-center gap-2 px-2 sm:grid-cols-[5.5rem_4rem_4rem_5.5rem_minmax(0,1fr)] sm:gap-3";
+
 type BlockRowProps = {
   block: BlockSummary;
   network: string;
@@ -24,7 +28,7 @@ export function BlockRow({
   const href = entityHref(network, "block", String(block.height));
   return (
     <div
-      className={`grid h-10 grid-cols-[5.5rem_4rem_4rem_5.5rem_minmax(0,1fr)] items-center gap-3 border-b border-surface-3/40 px-2 text-sm transition-colors duration-700 ${
+      className={`${BLOCK_ROW_GRID} h-auto min-h-10 border-b border-surface-3/40 py-1.5 text-xs transition-colors duration-700 sm:h-10 sm:py-0 sm:text-sm ${
         highlight ? "bg-surface-2" : ""
       } ${className}`}
       data-testid="block-row"
@@ -38,11 +42,14 @@ export function BlockRow({
       </a>
       <RelativeAge time={block.time} />
       <span className="font-mono tabular-nums text-text-mute">{block.tx_count}</span>
-      <span className="font-mono tabular-nums text-text-mute">
+      <span className="hidden font-mono tabular-nums text-text-mute sm:block">
         {block.size != null ? `${block.size}` : "—"}
       </span>
       <div className="flex min-w-0 items-center justify-end gap-2">
-        <AmountCY value={block.fees} className="text-text-mute" />
+        <AmountCY
+          value={block.fees}
+          className="min-w-0 truncate text-xs text-text-mute sm:text-sm"
+        />
         <HashLink
           value={block.hash}
           href={entityHref(network, "block", block.hash)}
@@ -58,12 +65,12 @@ export function BlockRow({
 export function BlockRowHeader({ className = "" }: { className?: string }) {
   return (
     <div
-      className={`grid h-8 grid-cols-[5.5rem_4rem_4rem_5.5rem_minmax(0,1fr)] items-center gap-3 border-b border-surface-3 px-2 text-xs text-text-dim ${className}`}
+      className={`${BLOCK_ROW_GRID} h-8 border-b border-surface-3 text-xs text-text-dim ${className}`}
     >
       <span>Height</span>
       <span>Age</span>
       <span>Txs</span>
-      <span>Size</span>
+      <span className="hidden sm:block">Size</span>
       <span className="text-right">Fees</span>
     </div>
   );

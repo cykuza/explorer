@@ -273,6 +273,10 @@ export interface components {
             time: number;
             /** Delta */
             delta: string;
+            /** Is Hogex */
+            is_hogex: boolean;
+            /** Has Mweb */
+            has_mweb: boolean;
         };
         /** AddressTxPage */
         AddressTxPage: {
@@ -377,10 +381,24 @@ export interface components {
             /** Total Fee */
             total_fee: string;
         };
+        /** MempoolTxItem */
+        MempoolTxItem: {
+            /** Txid */
+            txid: string;
+            /** Has Mweb */
+            has_mweb: boolean;
+            /**
+             * Is Hogex
+             * @default false
+             */
+            is_hogex?: boolean;
+        };
         /** MempoolTxids */
         MempoolTxids: {
             /** Txids */
             txids: string[];
+            /** Txs */
+            txs: components["schemas"]["MempoolTxItem"][];
         };
         /** MwebBlockInfo */
         MwebBlockInfo: {
@@ -489,6 +507,8 @@ export interface components {
             fee?: string | null;
             /** Is Hogex */
             is_hogex?: boolean | null;
+            /** Has Mweb */
+            has_mweb: boolean;
             /** Confirmations */
             confirmations: number;
             /** Time */
@@ -510,6 +530,8 @@ export interface components {
             total_out: string;
             /** Is Hogex */
             is_hogex: boolean;
+            /** Has Mweb */
+            has_mweb: boolean;
         };
         /** TxVin */
         TxVin: {

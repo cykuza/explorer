@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { ErrorCard } from "@/components/ErrorCard";
 import { HashLink } from "@/components/HashLink";
 import { Skeleton } from "@/components/Skeleton";
+import { TxKindBadge } from "@/components/TxKindBadge";
 import { fetchTx, type TxDetail } from "@/lib/api/client";
 import { useLiveEvents } from "@/hooks/useLiveEvents";
 import { useEntityId } from "@/hooks/usePrettyPathname";
@@ -154,11 +155,7 @@ function TxViewInner({ network, txid }: { network: string; txid: string }) {
     <div className="space-y-4" data-testid="tx-page">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="font-accent text-2xl text-text-bright">Transaction</h1>
-        {tx.is_hogex ? (
-          <span className="rounded-sm border border-surface-3 px-2 py-0.5 text-xs text-metal">
-            hogex
-          </span>
-        ) : null}
+        <TxKindBadge isHogex={tx.is_hogex} hasMweb={tx.has_mweb} />
       </div>
 
       <Card data-testid="tx-header">
@@ -243,8 +240,8 @@ function TxViewInner({ network, txid }: { network: string; txid: string }) {
                     </div>
                   )}
                   {vin.ismweb ? (
-                    <span className="mt-1 inline-block text-xs text-text-dim opacity-60">
-                      ismweb
+                    <span className="mt-1 inline-block rounded-sm border border-surface-3 px-1.5 py-0.5 text-xs text-metal">
+                      MWEB
                     </span>
                   ) : null}
                 </li>
@@ -290,7 +287,9 @@ function TxViewInner({ network, txid }: { network: string; txid: string }) {
                       network={network}
                     />
                     {vout.ismweb ? (
-                      <span className="opacity-60">ismweb</span>
+                      <span className="rounded-sm border border-surface-3 px-1.5 py-0.5 text-metal">
+                        MWEB
+                      </span>
                     ) : null}
                   </div>
                 </li>

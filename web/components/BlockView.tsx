@@ -11,6 +11,7 @@ import { ErrorCard } from "@/components/ErrorCard";
 import { HashLink } from "@/components/HashLink";
 import { RelativeAge } from "@/components/RelativeAge";
 import { Skeleton } from "@/components/Skeleton";
+import { TxKindBadge } from "@/components/TxKindBadge";
 import {
   fetchBlock,
   fetchBlockTxs,
@@ -242,12 +243,12 @@ function BlockViewInner({
                   value={tx.txid}
                   href={entityHref(network, "tx", tx.txid)}
                 />
-                {tx.is_hogex ? (
-                  <span className="text-xs text-metal">hogex</span>
-                ) : (
-                  <span />
-                )}
-                <AmountCY value={tx.fee} className="text-text-mute" />
+                <TxKindBadge isHogex={tx.is_hogex} hasMweb={tx.has_mweb} />
+                <AmountCY
+                  value={tx.total_out}
+                  compact
+                  className="text-text-mute"
+                />
               </li>
             ))}
           </ul>

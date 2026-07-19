@@ -8,7 +8,7 @@ import type { components } from "@/lib/api/schema";
 
 export type BlockSummary = components["schemas"]["BlockSummary"];
 
-/** Mobile: Height | Age | Txs | Fees. sm+: + Size; Hash via HashLink. */
+/** Mobile: Height | Age | Txs | Out. sm+: + Size; Hash via HashLink. */
 const BLOCK_ROW_GRID =
   "grid grid-cols-[4.5rem_3.25rem_2.5rem_minmax(0,1fr)] items-center gap-2 px-2 sm:grid-cols-[5.5rem_4rem_4rem_5.5rem_minmax(0,1fr)] sm:gap-3";
 
@@ -47,7 +47,8 @@ export function BlockRow({
       </span>
       <div className="flex min-w-0 items-center justify-end gap-2">
         <AmountCY
-          value={block.fees}
+          value={block.total_out}
+          compact
           className="min-w-0 truncate text-xs text-text-mute sm:text-sm"
         />
         <HashLink
@@ -71,7 +72,7 @@ export function BlockRowHeader({ className = "" }: { className?: string }) {
       <span>Age</span>
       <span>Txs</span>
       <span className="hidden sm:block">Size</span>
-      <span className="text-right">Fees</span>
+      <span className="text-right">Out</span>
     </div>
   );
 }

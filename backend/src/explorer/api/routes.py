@@ -26,6 +26,7 @@ from explorer.api.models import (
     HealthResponse,
     MempoolInfo,
     MempoolTxids,
+    MempoolTxItem,
     MwebBlockInfo,
     MwebSummary,
     NetworkHealth,
@@ -38,6 +39,7 @@ from explorer.api.models import (
     TxVout,
 )
 from explorer.api.money import decimal_str
+from explorer.api.mweb_flags import PEGIN_SCRIPT_TYPE, has_mweb_flag, has_mweb_from_raw
 from explorer.api.problems import raise_problem
 from explorer.api.search import classify_query
 from explorer.api.settings import MWEB_ACTIVATION_HEIGHT, ApiSettings
@@ -250,6 +252,22 @@ async def get_block_txs(
                 .limit(per_page),
             )
         ).all()
+        txids = [str(r.txid) for r in rows]
+        pegin_txids: set[str] = set()
+        if txids:
+            pegin_rows = (
+                await conn.execute(
+                    select(tables.outputs.c.txid)
+                    .where(
+                        and_(
+                            tables.outputs.c.txid.in_(txids),
+                            tables.outputs.c.script_type == PEGIN_SCRIPT_TYPE,
+                        ),
+                    )
+                    .distinct(),
+                )
+            ).all()
+            pegin_txids = {str(r.txid) for r in pegin_rows}
     return BlockTxPage(
         total=total,
         page=page,
@@ -262,6 +280,10 @@ async def get_block_txs(
                 size=int(r.size) if r.size is not None else None,
                 total_out=decimal_str(_as_decimal(r.total_out)),
                 is_hogex=bool(r.is_hogex),
+                has_mweb=has_mweb_flag(
+                    is_hogex=bool(r.is_hogex),
+                    has_pegin=str(r.txid) in pegin_txids,
+                ),
             )
             for r in rows
         ],
@@ -368,6 +390,7 @@ async def get_tx(
 
     block_height = int(db_tx.block_height) if db_tx is not None else None
     confirmations = tip_height - block_height + 1 if block_height is not None else 0
+    is_hogex = bool(db_tx.is_hogex) if db_tx is not None else False
 
     return TxDetail(
         txid=str(raw.get("txid", txid)),
@@ -384,7 +407,8 @@ async def get_tx(
         block_height=block_height,
         idx=int(db_tx.idx) if db_tx is not None else None,
         fee=decimal_str(_as_decimal(db_tx.fee)) if db_tx is not None else None,
-        is_hogex=bool(db_tx.is_hogex) if db_tx is not None else None,
+        is_hogex=is_hogex if db_tx is not None else None,
+        has_mweb=has_mweb_from_raw(raw, is_hogex=is_hogex),
         confirmations=confirmations,
         time=int(raw["time"]) if "time" in raw else None,
         blocktime=int(raw["blocktime"]) if "blocktime" in raw else None,
@@ -517,12 +541,32 @@ async def get_address_txs(
                     select(tables.blocks.c.time).where(tables.blocks.c.height == height),
                 )
             ).one_or_none()
+            tx_row = (
+                await conn.execute(
+                    select(tables.txs.c.is_hogex).where(tables.txs.c.txid == txid),
+                )
+            ).one_or_none()
+            is_hogex = bool(tx_row.is_hogex) if tx_row is not None else False
+            has_pegin = (
+                await conn.execute(
+                    select(tables.outputs.c.txid)
+                    .where(
+                        and_(
+                            tables.outputs.c.txid == txid,
+                            tables.outputs.c.script_type == PEGIN_SCRIPT_TYPE,
+                        ),
+                    )
+                    .limit(1),
+                )
+            ).one_or_none() is not None
             items.append(
                 AddressTxItem(
                     txid=txid,
                     block_height=height,
                     time=int(block_time.time) if block_time is not None else 0,
                     delta=decimal_str(received - spent_amt),
+                    is_hogex=is_hogex,
+                    has_mweb=has_mweb_flag(is_hogex=is_hogex, has_pegin=has_pegin),
                 ),
             )
 
@@ -555,7 +599,17 @@ async def get_mempool_txs(
     if not isinstance(raw, list):
         raise_problem(502, "Bad Gateway", "Unexpected getrawmempool response")
     txids = [str(t) for t in raw[:limit]]
-    return MempoolTxids(txids=txids)
+    items: list[MempoolTxItem] = []
+    for txid in txids:
+        has_mweb = False
+        try:
+            tx_raw = await ctx.rpc.call("getrawtransaction", txid, 1)
+        except RpcError:
+            tx_raw = None
+        if isinstance(tx_raw, dict):
+            has_mweb = has_mweb_from_raw(tx_raw, is_hogex=False)
+        items.append(MempoolTxItem(txid=txid, has_mweb=has_mweb, is_hogex=False))
+    return MempoolTxids(txids=txids, txs=items)
 
 
 @router.get("/{network}/mweb/summary", response_model=MwebSummary, tags=["mweb"])

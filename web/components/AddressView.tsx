@@ -12,6 +12,7 @@ import { ErrorCard } from "@/components/ErrorCard";
 import { HashLink } from "@/components/HashLink";
 import { RelativeAge } from "@/components/RelativeAge";
 import { Skeleton } from "@/components/Skeleton";
+import { TxKindBadge } from "@/components/TxKindBadge";
 import {
   fetchAddress,
   fetchAddressTxs,
@@ -171,8 +172,9 @@ function AddressViewInner({
           <EmptyState title="No transactions" className="border-0 p-2" />
         ) : (
           <ul>
-            <li className="grid h-8 grid-cols-[minmax(0,1fr)_5rem_4rem_minmax(7rem,auto)] items-center gap-3 border-b border-surface-3 px-1 text-xs text-text-dim">
+            <li className="grid h-8 grid-cols-[minmax(0,1fr)_auto_5rem_4rem_minmax(7rem,auto)] items-center gap-2 border-b border-surface-3 px-1 text-xs text-text-dim sm:gap-3">
               <span>Txid</span>
+              <span aria-hidden className="min-w-0" />
               <span>Height</span>
               <span>Age</span>
               <span className="text-right">Delta</span>
@@ -180,13 +182,14 @@ function AddressViewInner({
             {txs.txs.map((row) => (
               <li
                 key={`${row.txid}-${row.block_height}`}
-                className="grid h-10 grid-cols-[minmax(0,1fr)_5rem_4rem_minmax(7rem,auto)] items-center gap-3 border-b border-surface-3/40 px-1 text-sm"
+                className="grid h-10 grid-cols-[minmax(0,1fr)_auto_5rem_4rem_minmax(7rem,auto)] items-center gap-2 border-b border-surface-3/40 px-1 text-sm sm:gap-3"
                 data-testid="address-tx-row"
               >
                 <HashLink
                   value={row.txid}
                   href={entityHref(network, "tx", row.txid)}
                 />
+                <TxKindBadge isHogex={row.is_hogex} hasMweb={row.has_mweb} />
                 <a
                   href={entityHref(network, "block", String(row.block_height))}
                   className="font-mono tabular-nums text-text-mute underline-offset-2 hover:underline"

@@ -124,8 +124,16 @@ def _mweb_block() -> dict[str, Any]:
                 "vout": [
                     {
                         "n": 0,
-                        "value": Decimal("39.9"),
+                        "value": Decimal("29.9"),
                         "scriptPubKey": _spk("bob"),
+                    },
+                    {
+                        "n": 1,
+                        "value": Decimal("10"),
+                        "scriptPubKey": {
+                            "type": "witness_mweb_pegin",
+                            "hex": "51",
+                        },
                     },
                 ],
                 "vkern": [
@@ -288,12 +296,45 @@ def stub_rpc() -> AsyncMock:
                     "vout": [
                         {
                             "n": 0,
-                            "value": Decimal("39.9"),
+                            "value": Decimal("29.9"),
                             "scriptPubKey": _spk("bob"),
+                        },
+                        {
+                            "n": 1,
+                            "value": Decimal("10"),
+                            "scriptPubKey": {
+                                "type": "witness_mweb_pegin",
+                                "hex": "51",
+                            },
                         },
                     ],
                     "hex": "0101",
                     "blockhash": BLOCK1,
+                }
+            if txid.startswith("mp"):
+                return {
+                    "txid": txid,
+                    "hash": txid,
+                    "version": 1,
+                    "size": 100,
+                    "vsize": 100,
+                    "weight": 400,
+                    "locktime": 0,
+                    "vin": [
+                        {
+                            "txid": COINBASE0,
+                            "vout": 0,
+                            "sequence": 0xFFFFFFFF,
+                        },
+                    ],
+                    "vout": [
+                        {
+                            "n": 0,
+                            "value": Decimal("1"),
+                            "scriptPubKey": _spk("mempool"),
+                        },
+                    ],
+                    "hex": "mp01",
                 }
             raise RpcError(-5, "No such mempool or blockchain transaction")
         raise AssertionError(f"unexpected RPC {method} {params}")
@@ -374,6 +415,14 @@ async def test_block_txs(api_client: AsyncClient) -> None:
     hogex = [t for t in body["txs"] if t["is_hogex"]]
     assert len(hogex) == 1
     assert hogex[0]["txid"] == HOGEX_TX
+    assert hogex[0]["has_mweb"] is True
+    pegin = [t for t in body["txs"] if t["txid"] == SPEND_TX]
+    assert len(pegin) == 1
+    assert pegin[0]["is_hogex"] is False
+    assert pegin[0]["has_mweb"] is True
+    coinbase = [t for t in body["txs"] if t["txid"] == COINBASE1]
+    assert len(coinbase) == 1
+    assert coinbase[0]["has_mweb"] is False
 
 
 @pytest.mark.asyncio
@@ -382,12 +431,23 @@ async def test_tx_hogex(api_client: AsyncClient) -> None:
     assert r.status_code == 200
     body = r.json()
     assert body["is_hogex"] is True
+    assert body["has_mweb"] is True
     assert body["block_height"] == 1
     assert body["confirmations"] == 1
     assert body["vin"][0]["prevout"]["address"] == "miner"
     assert body["fee"] is not None
     assert "spent_by_txid" in body["vout"][0]
     assert body["vout"][1]["spent_by_txid"] is None
+
+
+@pytest.mark.asyncio
+async def test_tx_pegin_has_mweb(api_client: AsyncClient) -> None:
+    r = await api_client.get(f"/api/v1/regtest/tx/{SPEND_TX}")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["is_hogex"] is False
+    assert body["has_mweb"] is True
+    assert body["vout"][1]["scriptPubKey"]["type"] == "witness_mweb_pegin"
 
 
 @pytest.mark.asyncio
@@ -418,6 +478,7 @@ async def test_address_txs(api_client: AsyncClient) -> None:
     assert body["total"] >= 1
     assert any(t["txid"] == COINBASE0 for t in body["txs"])
     assert all("delta" in t for t in body["txs"])
+    assert all("has_mweb" in t and "is_hogex" in t for t in body["txs"])
 
 
 @pytest.mark.asyncio
@@ -435,7 +496,12 @@ async def test_mempool(api_client: AsyncClient) -> None:
 async def test_mempool_txs(api_client: AsyncClient) -> None:
     r = await api_client.get("/api/v1/regtest/mempool/txs", params={"limit": 1})
     assert r.status_code == 200
-    assert len(r.json()["txids"]) == 1
+    body = r.json()
+    assert len(body["txids"]) == 1
+    assert len(body["txs"]) == 1
+    assert body["txs"][0]["txid"] == body["txids"][0]
+    assert body["txs"][0]["has_mweb"] is False
+    assert body["txs"][0]["is_hogex"] is False
 
 
 @pytest.mark.asyncio

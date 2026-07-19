@@ -76,6 +76,7 @@ class TxSummary(BaseModel):
     size: int | None
     total_out: str
     is_hogex: bool
+    has_mweb: bool
 
 
 class BlockTxPage(BaseModel):
@@ -135,6 +136,7 @@ class TxDetail(BaseModel):
     idx: int | None = None
     fee: str | None = None
     is_hogex: bool | None = None
+    has_mweb: bool
     confirmations: int
     time: int | None = None
     blocktime: int | None = None
@@ -159,6 +161,8 @@ class AddressTxItem(BaseModel):
     block_height: int
     time: int
     delta: str
+    is_hogex: bool
+    has_mweb: bool
 
 
 class AddressTxPage(BaseModel):
@@ -178,10 +182,19 @@ class MempoolInfo(BaseModel):
     total_fee: str
 
 
+class MempoolTxItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    txid: str
+    has_mweb: bool
+    is_hogex: bool = False
+
+
 class MempoolTxids(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     txids: list[str]
+    txs: list[MempoolTxItem]
 
 
 class MwebSummary(BaseModel):

@@ -11,6 +11,7 @@ import { ErrorCard } from "@/components/ErrorCard";
 import { HashLink } from "@/components/HashLink";
 import { RelativeAge } from "@/components/RelativeAge";
 import { Skeleton, SkeletonRow, SkeletonStat } from "@/components/Skeleton";
+import { TxKindBadge } from "@/components/TxKindBadge";
 import {
   fetchBlock,
   fetchBlocks,
@@ -20,6 +21,7 @@ import {
   fetchTip,
   type BlockSummary,
   type MempoolInfo,
+  type MempoolTxids,
   type MwebSummary,
   type TipResponse,
 } from "@/lib/api/client";
@@ -34,12 +36,14 @@ const LATEST_LIMIT = 10;
 const MEMPOOL_TX_LIMIT = 12;
 const HIGHLIGHT_MS = 2500;
 
+type MempoolTxItem = MempoolTxids["txs"][number];
+
 type DashState = {
   tip: TipResponse | null;
   difficulty: string | null;
   blocks: BlockSummary[];
   mempool: MempoolInfo | null;
-  mempoolTxids: string[];
+  mempoolTxs: MempoolTxItem[];
   mweb: MwebSummary | null;
 };
 
@@ -72,7 +76,7 @@ export function DashboardView() {
         difficulty: null,
         blocks,
         mempool,
-        mempoolTxids: mempoolTxs.txids,
+        mempoolTxs: mempoolTxs.txs,
         mweb,
       });
       lastTipHeight.current = tip.height;
@@ -174,7 +178,7 @@ export function DashboardView() {
       );
       try {
         const r = await fetchMempoolTxs(network, { limit: MEMPOOL_TX_LIMIT });
-        setData((cur) => (cur ? { ...cur, mempoolTxids: r.txids } : cur));
+        setData((cur) => (cur ? { ...cur, mempoolTxs: r.txs } : cur));
       } catch {
         // ignore
       }
@@ -291,18 +295,22 @@ export function DashboardView() {
 
       <Card className="min-h-[12rem]">
         <h2 className="mb-2 h-7 font-accent text-xl text-text-bright">Mempool</h2>
-        {data.mempoolTxids.length === 0 ? (
+        {data.mempoolTxs.length === 0 ? (
           <p className="text-sm text-text-dim" data-testid="mempool-empty">
             Empty
           </p>
         ) : (
           <ul className="space-y-1" data-testid="mempool-list">
-            {data.mempoolTxids.map((txid) => (
-              <li key={txid} className="flex h-8 items-center">
+            {data.mempoolTxs.map((tx) => (
+              <li
+                key={tx.txid}
+                className="flex h-8 items-center justify-between gap-2"
+              >
                 <HashLink
-                  value={txid}
-                  href={entityHref(network, "tx", txid)}
+                  value={tx.txid}
+                  href={entityHref(network, "tx", tx.txid)}
                 />
+                <TxKindBadge isHogex={tx.is_hogex} hasMweb={tx.has_mweb} />
               </li>
             ))}
           </ul>

@@ -8,10 +8,12 @@ import { EmptyState } from "@/components/EmptyState";
 import { ErrorCard } from "@/components/ErrorCard";
 import { HashLink } from "@/components/HashLink";
 import { Skeleton } from "@/components/Skeleton";
+import { TxKindBadge } from "@/components/TxKindBadge";
 import {
   fetchMempool,
   fetchMempoolTxs,
   type MempoolInfo,
+  type MempoolTxids,
 } from "@/lib/api/client";
 import { useLiveEvents } from "@/hooks/useLiveEvents";
 import {
@@ -20,6 +22,8 @@ import {
 } from "@/lib/networks";
 
 const TX_LIMIT = 200;
+
+type MempoolTxItem = MempoolTxids["txs"][number];
 
 export function MempoolView() {
   const pathname = usePathname() || "/";
@@ -30,7 +34,7 @@ export function MempoolView() {
 function MempoolViewInner({ network }: { network: string }) {
   const live = useLiveEvents(network);
   const [info, setInfo] = useState<MempoolInfo | null>(null);
-  const [txids, setTxids] = useState<string[]>([]);
+  const [txs, setTxs] = useState<MempoolTxItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
 
@@ -39,12 +43,12 @@ function MempoolViewInner({ network }: { network: string }) {
     setLoading(true);
     setError(null);
     try {
-      const [mp, txs] = await Promise.all([
+      const [mp, page] = await Promise.all([
         fetchMempool(network),
         fetchMempoolTxs(network, { limit: TX_LIMIT }),
       ]);
       setInfo(mp);
-      setTxids(txs.txids);
+      setTxs(page.txs);
     } catch (err) {
       setError(err);
     } finally {
@@ -73,7 +77,7 @@ function MempoolViewInner({ network }: { network: string }) {
       }));
       try {
         const r = await fetchMempoolTxs(network, { limit: TX_LIMIT });
-        setTxids(r.txids);
+        setTxs(r.txs);
       } catch {
         // ignore transient refresh errors
       }
@@ -139,7 +143,7 @@ function MempoolViewInner({ network }: { network: string }) {
         <h2 className="mb-3 font-accent text-lg text-text-bright">
           Transactions
         </h2>
-        {txids.length === 0 ? (
+        {txs.length === 0 ? (
           <div data-testid="mempool-empty">
             <EmptyState
               title="mempool is empty"
@@ -148,12 +152,16 @@ function MempoolViewInner({ network }: { network: string }) {
           </div>
         ) : (
           <ul className="space-y-1" data-testid="mempool-list">
-            {txids.map((txid) => (
-              <li key={txid} className="flex h-8 items-center">
+            {txs.map((tx) => (
+              <li
+                key={tx.txid}
+                className="flex h-8 items-center justify-between gap-2"
+              >
                 <HashLink
-                  value={txid}
-                  href={entityHref(network, "tx", txid)}
+                  value={tx.txid}
+                  href={entityHref(network, "tx", tx.txid)}
                 />
+                <TxKindBadge isHogex={tx.is_hogex} hasMweb={tx.has_mweb} />
               </li>
             ))}
           </ul>

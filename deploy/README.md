@@ -125,6 +125,14 @@ Checklist CD expects:
 | OpenSSH only (no `rsync` needed) | file copy |
 | First deploy: use `skip_healthcheck` until indexers catch tip | `/healthz` is 503 while lagging |
 
+Local check of preflight helpers (no Docker):
+
+```bash
+bash deploy/scripts/test_host_preflight.sh
+# On the VPS (after files are present):
+bash /opt/explorer/scripts/host-preflight.sh /opt/explorer
+```
+
 Required repository secrets (Settings → Secrets and variables → Actions):
 
 | Secret | Purpose |

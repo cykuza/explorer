@@ -25,7 +25,9 @@ export function Logo({ href = "/", className = "" }: LogoProps) {
       >
         <path fill="#6D6D6D" d={LOGO_PATH} />
       </svg>
-      <span className="font-accent text-xl tracking-tight">Explorer</span>
+      <span className="font-accent text-lg leading-none tracking-tight">
+        Explorer
+      </span>
     </Link>
   );
 }

@@ -3,7 +3,6 @@
 import { type FormEvent, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { Button } from "@/components/Button";
 import { ApiError, searchEntity } from "@/lib/api/client";
 import {
   activeNetworkFromPathname,
@@ -53,7 +52,7 @@ export function SearchBar() {
     <div className="min-w-0 flex-1">
       <form
         onSubmit={onSubmit}
-        className="flex items-center gap-2"
+        className="flex h-9 items-stretch border border-surface-3 bg-surface-1"
         role="search"
       >
         <label htmlFor="explorer-search" className="sr-only">
@@ -72,11 +71,18 @@ export function SearchBar() {
           placeholder="Block / tx / address"
           autoComplete="off"
           spellCheck={false}
-          className="min-w-0 flex-1 border border-surface-3 bg-surface-1 px-3 py-1.5 font-mono text-sm text-text placeholder:text-text-dim focus:border-text-dim focus:outline-none"
+          className="min-w-0 flex-1 border-0 bg-transparent px-3 font-mono text-sm leading-none text-text placeholder:text-text-mute focus:outline-none"
         />
-        <Button type="submit" disabled={pending || !query.trim()}>
+        <button
+          type="submit"
+          disabled={pending || !query.trim()}
+          className="inline-flex h-full shrink-0 items-center justify-center border-l border-surface-3 px-3 text-sm leading-none text-text-bright transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          style={{
+            backgroundImage: "linear-gradient(27deg, #3d3d3d, #252525)",
+          }}
+        >
           Search
-        </Button>
+        </button>
       </form>
       {error ? (
         <p className="mt-1 text-xs text-text-dim" role="status">

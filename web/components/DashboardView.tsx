@@ -9,8 +9,8 @@ import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorCard } from "@/components/ErrorCard";
 import { RelativeAge } from "@/components/RelativeAge";
-import { Skeleton, SkeletonRow, SkeletonStat } from "@/components/Skeleton";
-import { TxIdRow } from "@/components/TxIdRow";
+import { SkeletonRow, SkeletonStat } from "@/components/Skeleton";
+import { TxIdRow, TxIdRowHeader } from "@/components/TxIdRow";
 import {
   fetchBlock,
   fetchBlocks,
@@ -170,11 +170,12 @@ export function DashboardView() {
         </div>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card className="min-h-[28rem]">
-            <h2 className="mb-3 h-7 font-accent text-xl text-text-bright">
+            <h2 className="mb-2 h-7 font-accent text-xl text-text-bright">
               Latest Transactions
             </h2>
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="mb-2 h-8 w-full" />
+            <TxIdRowHeader />
+            {Array.from({ length: LATEST_LIMIT }).map((_, i) => (
+              <SkeletonRow key={i} />
             ))}
           </Card>
           <Card className="min-h-[28rem]">
@@ -270,20 +271,20 @@ export function DashboardView() {
           <h2 className="mb-2 h-7 font-accent text-xl text-text-bright">
             Latest Transactions
           </h2>
+          <TxIdRowHeader />
           {data.txs.length === 0 ? (
             <EmptyState
               title="No transactions"
               className="border-0 bg-transparent p-2"
             />
           ) : (
-            <ul className="space-y-1" data-testid="latest-txs">
+            <ul data-testid="latest-txs">
               {data.txs.map((tx) => (
                 <TxIdRow
                   key={tx.txid}
                   txid={tx.txid}
                   network={network}
-                  isHogex={tx.is_hogex}
-                  hasMweb={tx.has_mweb}
+                  variant="feed"
                   testId="latest-tx-row"
                 />
               ))}

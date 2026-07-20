@@ -65,16 +65,20 @@ export function LagIndicator() {
 
   return (
     <span
-      className="inline-flex h-9 items-center gap-1.5 text-xs leading-none text-text-dim"
+      className="inline-flex h-9 items-center gap-1.5 font-mono text-xs leading-none text-text-dim"
       title={label}
       aria-label={label}
     >
       <span
-        className={`inline-block h-2 w-2 shrink-0 rounded-full ${
-          ok ? "bg-text-bright" : "bg-text-dim"
-        }`}
+        className="flex h-3 w-3 shrink-0 items-center justify-center"
         aria-hidden="true"
-      />
+      >
+        <span
+          className={`block h-1.5 w-1.5 rounded-full ${
+            ok ? "bg-text-bright" : "bg-text-dim"
+          }`}
+        />
+      </span>
       <span className="hidden sm:inline">{ok ? "sync" : "lag"}</span>
     </span>
   );

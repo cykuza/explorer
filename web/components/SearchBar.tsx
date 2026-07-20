@@ -60,7 +60,9 @@ export function SearchBar() {
         </label>
         <input
           id="explorer-search"
-          type="search"
+          type="text"
+          inputMode="search"
+          enterKeyHint="search"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -76,7 +78,7 @@ export function SearchBar() {
         <button
           type="submit"
           disabled={pending || !query.trim()}
-          className="inline-flex h-full shrink-0 items-center justify-center border-l border-surface-3 px-3 text-sm leading-none text-text-bright transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-full shrink-0 items-center justify-center border-l border-surface-3 px-3 font-mono text-sm leading-none text-text-bright transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           style={{
             backgroundImage: "linear-gradient(27deg, #3d3d3d, #252525)",
           }}

@@ -1,7 +1,8 @@
 # Production web (Next.js static export) + nginx front door.
 # Build from repo root:
 #   docker build -f deploy/docker/web.Dockerfile \
-#     --build-arg NEXT_PUBLIC_NETWORKS=mainnet,testnet .
+#     --build-arg NEXT_PUBLIC_NETWORKS=mainnet,testnet \
+#     --build-arg NEXT_PUBLIC_SITE_URL=https://cyberyen.work .
 
 # Node 24 (multi-arch index digest)
 FROM node@sha256:5711a0d445a1af54af9589066c646df387d1831a608226f4cd694fc59e745059 AS build
@@ -16,6 +17,8 @@ COPY web/ ./
 
 ARG NEXT_PUBLIC_NETWORKS=mainnet,testnet
 ENV NEXT_PUBLIC_NETWORKS=${NEXT_PUBLIC_NETWORKS}
+ARG NEXT_PUBLIC_SITE_URL=https://cyberyen.work
+ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
 RUN pnpm build
 
 # nginx:stable-alpine (multi-arch index digest)

@@ -24,9 +24,15 @@ Canonical nginx configs live in [`deploy/nginx/`](nginx/) (baked into the web im
 
 ```bash
 cd web
-NEXT_PUBLIC_NETWORKS=mainnet,testnet pnpm build
-# or: docker build -f deploy/docker/web.Dockerfile --build-arg NEXT_PUBLIC_NETWORKS=mainnet,testnet .
+NEXT_PUBLIC_NETWORKS=mainnet,testnet \
+NEXT_PUBLIC_SITE_URL=https://cyberyen.work \
+  pnpm build
+# or: docker build -f deploy/docker/web.Dockerfile \
+#       --build-arg NEXT_PUBLIC_NETWORKS=mainnet,testnet \
+#       --build-arg NEXT_PUBLIC_SITE_URL=https://cyberyen.work .
 ```
+
+`NEXT_PUBLIC_SITE_URL` sets the canonical origin for Open Graph / Twitter cards and JSON-LD (defaults to `https://cyberyen.work`).
 
 Non-default networks are emitted under `/{network}/…` at build time from `NEXT_PUBLIC_NETWORKS` (first entry is the default and uses root paths). Default-network URLs under `/mainnet/…` are permanently redirected to `/…`.
 

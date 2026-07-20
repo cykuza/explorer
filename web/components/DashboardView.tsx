@@ -274,6 +274,7 @@ export function DashboardView() {
           label="MWEB"
           href={networkHref(network, "/mweb")}
           testId="stat-mweb"
+          labelHint="Total coins currently held inside the MWEB protocol."
         >
           <AmountCY
             value={data.mweb?.mweb_amount ?? "0"}
@@ -349,11 +350,13 @@ function StatCard({
   children,
   testId,
   href,
+  labelHint,
 }: {
   label: string;
   children: ReactNode;
   testId?: string;
   href: string;
+  labelHint?: string;
 }) {
   return (
     <Card
@@ -362,7 +365,16 @@ function StatCard({
       className="min-h-[4.5rem] min-w-0 overflow-hidden"
       aria-label={`${label}: open`}
     >
-      <p className="text-xs uppercase tracking-wide text-text-dim">{label}</p>
+      <p
+        className={`text-xs uppercase tracking-wide text-text-dim ${
+          labelHint
+            ? "cursor-help underline decoration-dotted decoration-text-dim/50 underline-offset-2"
+            : ""
+        }`}
+        title={labelHint}
+      >
+        {label}
+      </p>
       <div className="mt-1 min-h-8 min-w-0 break-all">{children}</div>
     </Card>
   );

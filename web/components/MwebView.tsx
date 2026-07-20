@@ -126,7 +126,12 @@ function MwebViewInner({ network }: { network: string }) {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <p className="text-xs text-text-dim">MWEB amount</p>
+          <p
+            className="cursor-help text-xs text-text-dim underline decoration-dotted decoration-text-dim/50 underline-offset-2"
+            title="Total coins currently held inside the MWEB protocol."
+          >
+            MWEB amount
+          </p>
           <div className="mt-1" data-testid="mweb-amount">
             <AmountCY
               value={summary.mweb_amount}
@@ -191,14 +196,24 @@ function MwebViewInner({ network }: { network: string }) {
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-text-dim">Amount</dt>
+              <dt
+                className="cursor-help text-xs text-text-dim underline decoration-dotted decoration-text-dim/50 underline-offset-2"
+                title="Total coins currently held inside the MWEB protocol."
+              >
+                Amount
+              </dt>
               <dd>
                 <AmountCY value={latest.mweb_amount} />
               </dd>
             </div>
             {latest.hogex_txid ? (
               <div>
-                <dt className="text-xs text-text-dim">HogEx</dt>
+                <dt
+                  className="cursor-help text-xs text-text-dim underline decoration-dotted decoration-text-dim/50 underline-offset-2"
+                  title="Hogwarts Extension transaction that commits this block’s MWEB state to the transparent chain."
+                >
+                  HogEx
+                </dt>
                 <dd>
                   <HashLink
                     value={latest.hogex_txid}

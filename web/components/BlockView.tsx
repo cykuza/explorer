@@ -179,7 +179,10 @@ function BlockViewInner({
         <Card data-testid="block-mweb">
           <h2 className="mb-3 font-accent text-lg text-text-bright">MWEB</h2>
           <dl className="grid gap-2 text-sm sm:grid-cols-2">
-            <Field label="MWEB amount">
+            <Field
+              label="MWEB amount"
+              hint="Total coins currently held inside the MWEB protocol."
+            >
               <AmountCY value={block.mweb.mweb_amount} />
             </Field>
             <Field label="Kernels / TXOs">
@@ -197,7 +200,10 @@ function BlockViewInner({
               <AmountCY value={block.mweb.kernel_fees} />
             </Field>
             {block.mweb.hogex_txid ? (
-              <Field label="Hogex">
+              <Field
+                label="HogEx"
+                hint="Hogwarts Extension transaction that commits this block’s MWEB state to the transparent chain."
+              >
                 <HashLink
                   value={block.mweb.hogex_txid}
                   href={entityHref(network, "tx", block.mweb.hogex_txid)}
@@ -262,13 +268,20 @@ function BlockViewInner({
 function Field({
   label,
   children,
+  hint,
 }: {
   label: string;
   children: ReactNode;
+  hint?: string;
 }) {
   return (
     <div>
-      <dt className="text-xs text-text-dim">{label}</dt>
+      <dt
+        className={`text-xs text-text-dim ${hint ? "cursor-help underline decoration-dotted decoration-text-dim/50 underline-offset-2" : ""}`}
+        title={hint}
+      >
+        {label}
+      </dt>
       <dd className="mt-0.5 text-text">{children}</dd>
     </div>
   );

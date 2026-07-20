@@ -4,6 +4,11 @@ type TxKindBadgeProps = {
   className?: string;
 };
 
+const HOGEX_HINT =
+  "Hogwarts Extension (HogEx): the L1 transaction that commits this block’s MWEB state (pegs and kernels).";
+const MWEB_HINT =
+  "Transaction participates in MWEB (for example a peg-in).";
+
 /**
  * Professional chip for MWEB-related txs.
  * HogEx wins over the generic MWEB label — never both.
@@ -17,10 +22,13 @@ export function TxKindBadge({
   if (!label) {
     return null;
   }
+  const hint = isHogex ? HOGEX_HINT : MWEB_HINT;
   return (
     <span
-      className={`rounded-sm border border-surface-3 px-1.5 py-0.5 text-xs text-metal ${className}`}
+      className={`cursor-help rounded-sm border border-surface-3 px-1.5 py-0.5 text-xs text-metal ${className}`}
       data-testid={isHogex ? "tx-badge-hogex" : "tx-badge-mweb"}
+      title={hint}
+      aria-label={`${label}. ${hint}`}
     >
       {label}
     </span>

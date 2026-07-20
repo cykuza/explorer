@@ -394,6 +394,19 @@ async def test_blocks(api_client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_latest_txs(api_client: AsyncClient) -> None:
+    r = await api_client.get("/api/v1/regtest/txs", params={"limit": 10})
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body) == 4  # genesis coinbase + 3 txs in block 1
+    assert body[0]["block_height"] == 1
+    assert body[0]["txid"] == HOGEX_TX  # idx desc within tip block
+    assert body[0]["has_mweb"] is True
+    assert body[0]["time"] == 1_700_000_100
+    assert {t["txid"] for t in body[:3]} == {COINBASE1, SPEND_TX, HOGEX_TX}
+
+
+@pytest.mark.asyncio
 async def test_block_with_mweb(api_client: AsyncClient) -> None:
     r = await api_client.get("/api/v1/regtest/block/1")
     assert r.status_code == 200

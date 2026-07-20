@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/{network}/txs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Latest Txs */
+        get: operations["list_latest_txs_api_v1__network__txs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/{network}/block/{block_id}": {
         parameters: {
             query?: never;
@@ -533,6 +550,27 @@ export interface components {
             /** Has Mweb */
             has_mweb: boolean;
         };
+        /** LatestTxItem */
+        LatestTxItem: {
+            /** Txid */
+            txid: string;
+            /** Idx */
+            idx: number;
+            /** Fee */
+            fee: string;
+            /** Size */
+            size: number | null;
+            /** Total Out */
+            total_out: string;
+            /** Is Hogex */
+            is_hogex: boolean;
+            /** Has Mweb */
+            has_mweb: boolean;
+            /** Block Height */
+            block_height: number;
+            /** Time */
+            time: number;
+        };
         /** TxVin */
         TxVin: {
             /** Txid */
@@ -653,6 +691,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BlockSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_latest_txs_api_v1__network__txs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                network: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LatestTxItem"][];
                 };
             };
             /** @description Validation Error */

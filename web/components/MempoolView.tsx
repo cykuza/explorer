@@ -6,9 +6,8 @@ import { usePathname } from "next/navigation";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorCard } from "@/components/ErrorCard";
-import { HashLink } from "@/components/HashLink";
 import { Skeleton } from "@/components/Skeleton";
-import { TxKindBadge } from "@/components/TxKindBadge";
+import { TxIdRow } from "@/components/TxIdRow";
 import {
   fetchMempool,
   fetchMempoolTxs,
@@ -16,10 +15,7 @@ import {
   type MempoolTxids,
 } from "@/lib/api/client";
 import { useLiveEvents } from "@/hooks/useLiveEvents";
-import {
-  activeNetworkFromPathname,
-  entityHref,
-} from "@/lib/networks";
+import { activeNetworkFromPathname } from "@/lib/networks";
 
 const TX_LIMIT = 200;
 
@@ -153,16 +149,13 @@ function MempoolViewInner({ network }: { network: string }) {
         ) : (
           <ul className="space-y-1" data-testid="mempool-list">
             {txs.map((tx) => (
-              <li
+              <TxIdRow
                 key={tx.txid}
-                className="flex h-8 items-center justify-between gap-2"
-              >
-                <HashLink
-                  value={tx.txid}
-                  href={entityHref(network, "tx", tx.txid)}
-                />
-                <TxKindBadge isHogex={tx.is_hogex} hasMweb={tx.has_mweb} />
-              </li>
+                txid={tx.txid}
+                network={network}
+                isHogex={tx.is_hogex}
+                hasMweb={tx.has_mweb}
+              />
             ))}
           </ul>
         )}

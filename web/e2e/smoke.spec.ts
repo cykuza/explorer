@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test.describe.configure({ mode: "serial" });
 
 test("smoke: home → block → tx → address → search", async ({ page }) => {
-  // 1. Home shows tip height and ≥1 block row
+  // 1. Home shows tip height, latest txs, and ≥1 block row
   await page.goto("/");
   await expect(page.getByTestId("dashboard")).toBeVisible();
   const tip = page.getByTestId("tip-height");
@@ -11,13 +11,28 @@ test("smoke: home → block → tx → address → search", async ({ page }) => 
   const tipText = (await tip.innerText()).trim();
   expect(Number(tipText)).toBeGreaterThanOrEqual(1);
 
+  await expect(page.getByTestId("latest-txs")).toBeVisible();
+  await expect(page.getByTestId("latest-tx-row").first()).toBeVisible();
+
   const blockRows = page.getByTestId("block-row");
   await expect(blockRows.first()).toBeVisible();
   const firstHeight = await blockRows.first().getAttribute("data-height");
   expect(firstHeight).toBeTruthy();
 
+  // 1b. Stat cards navigate to section pages
+  await page.getByTestId("stat-mempool").click();
+  await expect(page.getByTestId("mempool-page")).toBeVisible();
+  await page.goto("/");
+  await expect(page.getByTestId("dashboard")).toBeVisible();
+  await page.getByTestId("stat-mweb").click();
+  await expect(page.getByTestId("mweb-page")).toBeVisible();
+  await page.goto("/");
+  await expect(page.getByTestId("dashboard")).toBeVisible();
+
   // 2. Click block → block page renders hash
-  await blockRows.first().locator("a").first().click();
+  const homeBlockRows = page.getByTestId("block-row");
+  await expect(homeBlockRows.first()).toBeVisible();
+  await homeBlockRows.first().locator("a").first().click();
   await expect(page.getByTestId("block-page")).toBeVisible();
   await expect(page.getByTestId("block-hash")).toBeVisible();
   const hashText = await page.getByTestId("block-hash").innerText();

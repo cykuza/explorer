@@ -9,6 +9,7 @@ export type TipResponse = components["schemas"]["TipResponse"];
 export type BlockSummary = components["schemas"]["BlockSummary"];
 export type BlockDetail = components["schemas"]["BlockDetail"];
 export type BlockTxPage = components["schemas"]["BlockTxPage"];
+export type LatestTxItem = components["schemas"]["LatestTxItem"];
 export type TxDetail = components["schemas"]["TxDetail"];
 export type AddressStatsResponse = components["schemas"]["AddressStatsResponse"];
 export type AddressTxPage = components["schemas"]["AddressTxPage"];
@@ -187,6 +188,15 @@ export async function fetchBlocks(
 ): Promise<BlockSummary[]> {
   return fetchApi<BlockSummary[]>(
     `/api/v1/${network}/blocks${qs({ before: opts?.before, limit: opts?.limit })}`,
+  );
+}
+
+export async function fetchLatestTxs(
+  network: string,
+  opts?: { limit?: number },
+): Promise<LatestTxItem[]> {
+  return fetchApi<LatestTxItem[]>(
+    `/api/v1/${network}/txs${qs({ limit: opts?.limit })}`,
   );
 }
 

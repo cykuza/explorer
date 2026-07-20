@@ -79,6 +79,13 @@ class TxSummary(BaseModel):
     has_mweb: bool
 
 
+class LatestTxItem(TxSummary):
+    """Confirmed tx in the global recent feed (extends block-scoped TxSummary)."""
+
+    block_height: int
+    time: int
+
+
 class BlockTxPage(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

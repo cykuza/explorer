@@ -8,20 +8,19 @@ import { BlockRow, BlockRowHeader } from "@/components/BlockRow";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorCard } from "@/components/ErrorCard";
-import { HashLink } from "@/components/HashLink";
 import { RelativeAge } from "@/components/RelativeAge";
 import { Skeleton, SkeletonRow, SkeletonStat } from "@/components/Skeleton";
-import { TxKindBadge } from "@/components/TxKindBadge";
+import { TxIdRow } from "@/components/TxIdRow";
 import {
   fetchBlock,
   fetchBlocks,
+  fetchLatestTxs,
   fetchMempool,
-  fetchMempoolTxs,
   fetchMwebSummary,
   fetchTip,
   type BlockSummary,
+  type LatestTxItem,
   type MempoolInfo,
-  type MempoolTxids,
   type MwebSummary,
   type TipResponse,
 } from "@/lib/api/client";
@@ -33,17 +32,15 @@ import {
 } from "@/lib/networks";
 
 const LATEST_LIMIT = 10;
-const MEMPOOL_TX_LIMIT = 12;
+const LATEST_TX_LIMIT = 12;
 const HIGHLIGHT_MS = 2500;
-
-type MempoolTxItem = MempoolTxids["txs"][number];
 
 type DashState = {
   tip: TipResponse | null;
   difficulty: string | null;
   blocks: BlockSummary[];
+  txs: LatestTxItem[];
   mempool: MempoolInfo | null;
-  mempoolTxs: MempoolTxItem[];
   mweb: MwebSummary | null;
 };
 
@@ -64,19 +61,19 @@ export function DashboardView() {
     setLoading(true);
     setError(null);
     try {
-      const [tip, blocks, mempool, mempoolTxs, mweb] = await Promise.all([
+      const [tip, blocks, txs, mempool, mweb] = await Promise.all([
         fetchTip(network),
         fetchBlocks(network, { limit: LATEST_LIMIT }),
+        fetchLatestTxs(network, { limit: LATEST_TX_LIMIT }),
         fetchMempool(network),
-        fetchMempoolTxs(network, { limit: MEMPOOL_TX_LIMIT }),
         fetchMwebSummary(network),
       ]);
       setData({
         tip,
         difficulty: null,
         blocks,
+        txs,
         mempool,
-        mempoolTxs: mempoolTxs.txs,
         mweb,
       });
       lastTipHeight.current = tip.height;
@@ -115,7 +112,10 @@ export function DashboardView() {
 
     void (async () => {
       try {
-        const newBlock = await fetchBlock(network, String(tip.height));
+        const [newBlock, latestTxs] = await Promise.all([
+          fetchBlock(network, String(tip.height)),
+          fetchLatestTxs(network, { limit: LATEST_TX_LIMIT }),
+        ]);
         const summary: BlockSummary = {
           height: newBlock.height,
           hash: newBlock.hash,
@@ -136,6 +136,7 @@ export function DashboardView() {
             tip: { height: tip.height, hash: tip.hash, time: tip.time },
             difficulty: newBlock.difficulty ?? cur.difficulty,
             blocks: [summary, ...withoutDup].slice(0, LATEST_LIMIT),
+            txs: latestTxs,
           };
         });
         setHighlightHeights((s) => new Set(s).add(summary.height));
@@ -162,28 +163,19 @@ export function DashboardView() {
     if (!mp) {
       return;
     }
-    void (async () => {
-      await Promise.resolve();
-      setData((cur) =>
-        cur
-          ? {
-              ...cur,
-              mempool: {
-                count: mp.count,
-                vsize: mp.vsize,
-                total_fee: cur.mempool?.total_fee ?? "0",
-              },
-            }
-          : cur,
-      );
-      try {
-        const r = await fetchMempoolTxs(network, { limit: MEMPOOL_TX_LIMIT });
-        setData((cur) => (cur ? { ...cur, mempoolTxs: r.txs } : cur));
-      } catch {
-        // ignore
-      }
-    })();
-  }, [live.mempool, network]);
+    setData((cur) =>
+      cur
+        ? {
+            ...cur,
+            mempool: {
+              count: mp.count,
+              vsize: mp.vsize,
+              total_fee: cur.mempool?.total_fee ?? "0",
+            },
+          }
+        : cur,
+    );
+  }, [live.mempool]);
 
   if (loading && !data) {
     return (
@@ -195,23 +187,25 @@ export function DashboardView() {
             </Card>
           ))}
         </div>
-        <Card className="min-h-[28rem]">
-          <h2 className="mb-3 h-7 font-accent text-xl text-text-bright">
-            Latest blocks
-          </h2>
-          <BlockRowHeader />
-          {Array.from({ length: LATEST_LIMIT }).map((_, i) => (
-            <SkeletonRow key={i} />
-          ))}
-        </Card>
-        <Card className="min-h-[12rem]">
-          <h2 className="mb-3 h-7 font-accent text-xl text-text-bright">
-            Mempool
-          </h2>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="mb-2 h-8 w-full" />
-          ))}
-        </Card>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card className="min-h-[28rem]">
+            <h2 className="mb-3 h-7 font-accent text-xl text-text-bright">
+              Latest Transactions
+            </h2>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="mb-2 h-8 w-full" />
+            ))}
+          </Card>
+          <Card className="min-h-[28rem]">
+            <h2 className="mb-3 h-7 font-accent text-xl text-text-bright">
+              Latest blocks
+            </h2>
+            <BlockRowHeader variant="feed" />
+            {Array.from({ length: LATEST_LIMIT }).map((_, i) => (
+              <SkeletonRow key={i} />
+            ))}
+          </Card>
+        </div>
       </div>
     );
   }
@@ -236,7 +230,11 @@ export function DashboardView() {
   return (
     <div className="space-y-6" data-testid="dashboard">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <StatCard label="Tip height">
+        <StatCard
+          label="Tip height"
+          href={networkHref(network, "/blocks")}
+          testId="stat-tip"
+        >
           <span
             className="font-mono text-xl tabular-nums text-text-bright"
             data-testid="tip-height"
@@ -244,15 +242,27 @@ export function DashboardView() {
             {tip.height}
           </span>
         </StatCard>
-        <StatCard label="Last block">
+        <StatCard
+          label="Last block"
+          href={entityHref(network, "block", String(tip.height))}
+          testId="stat-last-block"
+        >
           <RelativeAge time={tip.time} className="text-xl text-text-bright" />
         </StatCard>
-        <StatCard label="Difficulty">
+        <StatCard
+          label="Difficulty"
+          href={networkHref(network, "/charts")}
+          testId="stat-difficulty"
+        >
           <span className="font-mono text-sm tabular-nums text-text-bright sm:text-lg">
             {data.difficulty ?? "—"}
           </span>
         </StatCard>
-        <StatCard label="Mempool">
+        <StatCard
+          label="Mempool"
+          href={networkHref(network, "/mempool")}
+          testId="stat-mempool"
+        >
           <span className="font-mono text-sm tabular-nums text-text-bright sm:text-lg">
             {mempool?.count ?? 0}
             <span className="ml-1 text-xs text-text-dim sm:text-sm">
@@ -260,62 +270,76 @@ export function DashboardView() {
             </span>
           </span>
         </StatCard>
-        <StatCard label="MWEB amount">
+        <StatCard
+          label="MWEB"
+          href={networkHref(network, "/mweb")}
+          testId="stat-mweb"
+        >
           <AmountCY
             value={data.mweb?.mweb_amount ?? "0"}
+            compact
             className="text-sm text-text-bright sm:text-base"
           />
         </StatCard>
       </div>
 
-      <Card className="min-h-[28rem]">
-        <div className="mb-2 flex h-7 items-baseline justify-between">
-          <h2 className="font-accent text-xl text-text-bright">Latest blocks</h2>
-          <a
-            href={networkHref(network, "/blocks")}
-            className="text-xs text-text-dim hover:text-text-mute"
-          >
-            View all
-          </a>
-        </div>
-        <BlockRowHeader />
-        {data.blocks.length === 0 ? (
-          <EmptyState title="No blocks" className="border-0 bg-transparent p-2" />
-        ) : (
-          data.blocks.map((b) => (
-            <BlockRow
-              key={b.hash}
-              block={b}
-              network={network}
-              highlight={highlightHeights.has(b.height)}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card className="min-h-[28rem]">
+          <h2 className="mb-2 h-7 font-accent text-xl text-text-bright">
+            Latest Transactions
+          </h2>
+          {data.txs.length === 0 ? (
+            <EmptyState
+              title="No transactions"
+              className="border-0 bg-transparent p-2"
             />
-          ))
-        )}
-      </Card>
-
-      <Card className="min-h-[12rem]">
-        <h2 className="mb-2 h-7 font-accent text-xl text-text-bright">Mempool</h2>
-        {data.mempoolTxs.length === 0 ? (
-          <p className="text-sm text-text-dim" data-testid="mempool-empty">
-            Empty
-          </p>
-        ) : (
-          <ul className="space-y-1" data-testid="mempool-list">
-            {data.mempoolTxs.map((tx) => (
-              <li
-                key={tx.txid}
-                className="flex h-8 items-center justify-between gap-2"
-              >
-                <HashLink
-                  value={tx.txid}
-                  href={entityHref(network, "tx", tx.txid)}
+          ) : (
+            <ul className="space-y-1" data-testid="latest-txs">
+              {data.txs.map((tx) => (
+                <TxIdRow
+                  key={tx.txid}
+                  txid={tx.txid}
+                  network={network}
+                  isHogex={tx.is_hogex}
+                  hasMweb={tx.has_mweb}
+                  testId="latest-tx-row"
                 />
-                <TxKindBadge isHogex={tx.is_hogex} hasMweb={tx.has_mweb} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        <Card className="min-h-[28rem]">
+          <div className="mb-2 flex h-7 items-baseline justify-between">
+            <h2 className="font-accent text-xl text-text-bright">
+              Latest blocks
+            </h2>
+            <a
+              href={networkHref(network, "/blocks")}
+              className="text-xs text-text-dim hover:text-text-mute"
+            >
+              View all
+            </a>
+          </div>
+          <BlockRowHeader variant="feed" />
+          {data.blocks.length === 0 ? (
+            <EmptyState
+              title="No blocks"
+              className="border-0 bg-transparent p-2"
+            />
+          ) : (
+            data.blocks.map((b) => (
+              <BlockRow
+                key={b.hash}
+                block={b}
+                network={network}
+                highlight={highlightHeights.has(b.height)}
+                variant="feed"
+              />
+            ))
+          )}
+        </Card>
+      </div>
     </div>
   );
 }
@@ -324,13 +348,20 @@ function StatCard({
   label,
   children,
   testId,
+  href,
 }: {
   label: string;
   children: ReactNode;
   testId?: string;
+  href: string;
 }) {
   return (
-    <Card data-testid={testId} className="min-h-[4.5rem] min-w-0 overflow-hidden">
+    <Card
+      href={href}
+      data-testid={testId}
+      className="min-h-[4.5rem] min-w-0 overflow-hidden"
+      aria-label={`${label}: open`}
+    >
       <p className="text-xs uppercase tracking-wide text-text-dim">{label}</p>
       <div className="mt-1 min-h-8 min-w-0 break-all">{children}</div>
     </Card>

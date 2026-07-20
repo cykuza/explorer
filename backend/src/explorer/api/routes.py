@@ -9,6 +9,7 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import and_, func, or_, select, union
+from sqlalchemy.ext.asyncio import AsyncConnection
 
 from explorer import tables
 from explorer.api.context import NetworkContext
@@ -24,6 +25,7 @@ from explorer.api.models import (
     ChartMetric,
     ChartPoint,
     HealthResponse,
+    LatestTxItem,
     MempoolInfo,
     MempoolTxids,
     MempoolTxItem,
@@ -74,6 +76,38 @@ def _mweb_info(row: Any) -> MwebBlockInfo:
         pegout=decimal_str(_as_decimal(row.pegout)),
         kernel_fees=decimal_str(_as_decimal(row.kernel_fees)),
         hogex_txid=row.hogex_txid,
+    )
+
+
+async def _pegin_txids(conn: AsyncConnection, txids: list[str]) -> set[str]:
+    if not txids:
+        return set()
+    rows = (
+        await conn.execute(
+            select(tables.outputs.c.txid)
+            .where(
+                and_(
+                    tables.outputs.c.txid.in_(txids),
+                    tables.outputs.c.script_type == PEGIN_SCRIPT_TYPE,
+                ),
+            )
+            .distinct(),
+        )
+    ).all()
+    return {str(r.txid) for r in rows}
+
+
+def _tx_summary(row: Any, pegin_txids: set[str]) -> TxSummary:
+    txid = str(row.txid)
+    is_hogex = bool(row.is_hogex)
+    return TxSummary(
+        txid=txid,
+        idx=int(row.idx),
+        fee=decimal_str(_as_decimal(row.fee)),
+        size=int(row.size) if row.size is not None else None,
+        total_out=decimal_str(_as_decimal(row.total_out)),
+        is_hogex=is_hogex,
+        has_mweb=has_mweb_flag(is_hogex=is_hogex, has_pegin=txid in pegin_txids),
     )
 
 
@@ -181,6 +215,45 @@ async def list_blocks(
     ]
 
 
+@router.get("/{network}/txs", response_model=list[LatestTxItem], tags=["txs"])
+async def list_latest_txs(
+    ctx: NetworkCtx,
+    limit: int = Query(default=12, ge=1, le=100),
+) -> list[LatestTxItem]:
+    async with connect(ctx.engine, ctx.schema) as conn:
+        rows = (
+            await conn.execute(
+                select(
+                    tables.txs.c.txid,
+                    tables.txs.c.idx,
+                    tables.txs.c.fee,
+                    tables.txs.c.size,
+                    tables.txs.c.total_out,
+                    tables.txs.c.is_hogex,
+                    tables.txs.c.block_height,
+                    tables.blocks.c.time,
+                )
+                .select_from(
+                    tables.txs.join(
+                        tables.blocks,
+                        tables.txs.c.block_height == tables.blocks.c.height,
+                    ),
+                )
+                .order_by(tables.txs.c.block_height.desc(), tables.txs.c.idx.desc())
+                .limit(limit),
+            )
+        ).all()
+        pegin = await _pegin_txids(conn, [str(r.txid) for r in rows])
+    return [
+        LatestTxItem(
+            **_tx_summary(r, pegin).model_dump(),
+            block_height=int(r.block_height),
+            time=int(r.time),
+        )
+        for r in rows
+    ]
+
+
 @router.get("/{network}/block/{block_id}", response_model=BlockDetail, tags=["block"])
 async def get_block(
     block_id: str,
@@ -252,41 +325,12 @@ async def get_block_txs(
                 .limit(per_page),
             )
         ).all()
-        txids = [str(r.txid) for r in rows]
-        pegin_txids: set[str] = set()
-        if txids:
-            pegin_rows = (
-                await conn.execute(
-                    select(tables.outputs.c.txid)
-                    .where(
-                        and_(
-                            tables.outputs.c.txid.in_(txids),
-                            tables.outputs.c.script_type == PEGIN_SCRIPT_TYPE,
-                        ),
-                    )
-                    .distinct(),
-                )
-            ).all()
-            pegin_txids = {str(r.txid) for r in pegin_rows}
+        pegin = await _pegin_txids(conn, [str(r.txid) for r in rows])
     return BlockTxPage(
         total=total,
         page=page,
         per_page=per_page,
-        txs=[
-            TxSummary(
-                txid=str(r.txid),
-                idx=int(r.idx),
-                fee=decimal_str(_as_decimal(r.fee)),
-                size=int(r.size) if r.size is not None else None,
-                total_out=decimal_str(_as_decimal(r.total_out)),
-                is_hogex=bool(r.is_hogex),
-                has_mweb=has_mweb_flag(
-                    is_hogex=bool(r.is_hogex),
-                    has_pegin=str(r.txid) in pegin_txids,
-                ),
-            )
-            for r in rows
-        ],
+        txs=[_tx_summary(r, pegin) for r in rows],
     )
 
 

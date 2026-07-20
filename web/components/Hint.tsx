@@ -19,8 +19,30 @@ type HintProps = {
 
 type Anchor = { top: number; left: number };
 
+function InfoIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 16 16"
+      width={14}
+      height={14}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={className}
+    >
+      <circle cx="8" cy="8" r="5.25" />
+      <path d="M8 7.25v3.25" />
+      <circle cx="8" cy="5.35" r="0.85" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 /**
- * Compact info control: "i" trigger + design-token popover.
+ * Compact info control: icon trigger + design-token popover.
  * Safe beside stretch-links (stopPropagation on click; no nested <a>).
  */
 export function Hint({ content, className = "", label = "About" }: HintProps) {
@@ -107,7 +129,7 @@ export function Hint({ content, className = "", label = "About" }: HintProps) {
         aria-label={label}
         aria-expanded={open}
         aria-describedby={open ? tipId : undefined}
-        className={`inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border border-surface-3 text-[10px] leading-none text-text-dim transition-colors hover:border-text-dim hover:text-text-mute focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-metal ${className}`}
+        className={`inline-flex shrink-0 items-center justify-center rounded-sm p-0.5 text-text-dim transition-colors hover:bg-surface-3/50 hover:text-text-mute focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-metal ${className}`}
         onMouseEnter={show}
         onMouseLeave={() => {
           if (!pinned) {
@@ -132,7 +154,7 @@ export function Hint({ content, className = "", label = "About" }: HintProps) {
           setOpen(true);
         }}
       >
-        i
+        <InfoIcon />
       </button>
       {open && anchor
         ? createPortal(

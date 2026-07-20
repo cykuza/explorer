@@ -32,8 +32,7 @@ import {
   networkHref,
 } from "@/lib/networks";
 
-const LATEST_LIMIT = 10;
-const LATEST_TX_LIMIT = 12;
+const LATEST_FEED_LIMIT = 12;
 const HIGHLIGHT_MS = 2500;
 
 type DashState = {
@@ -64,8 +63,8 @@ export function DashboardView() {
     try {
       const [tip, blocks, txs, mempool, mweb] = await Promise.all([
         fetchTip(network),
-        fetchBlocks(network, { limit: LATEST_LIMIT }),
-        fetchLatestTxs(network, { limit: LATEST_TX_LIMIT }),
+        fetchBlocks(network, { limit: LATEST_FEED_LIMIT }),
+        fetchLatestTxs(network, { limit: LATEST_FEED_LIMIT }),
         fetchMempool(network),
         fetchMwebSummary(network),
       ]);
@@ -115,7 +114,7 @@ export function DashboardView() {
       try {
         const [newBlock, latestTxs] = await Promise.all([
           fetchBlock(network, String(tip.height)),
-          fetchLatestTxs(network, { limit: LATEST_TX_LIMIT }),
+          fetchLatestTxs(network, { limit: LATEST_FEED_LIMIT }),
         ]);
         const summary: BlockSummary = {
           height: newBlock.height,
@@ -136,7 +135,7 @@ export function DashboardView() {
             ...cur,
             tip: { height: tip.height, hash: tip.hash, time: tip.time },
             difficulty: newBlock.difficulty ?? cur.difficulty,
-            blocks: [summary, ...withoutDup].slice(0, LATEST_LIMIT),
+            blocks: [summary, ...withoutDup].slice(0, LATEST_FEED_LIMIT),
             txs: latestTxs,
           };
         });
@@ -150,7 +149,7 @@ export function DashboardView() {
         }, HIGHLIGHT_MS);
 
         if (tip.height - prev > 1) {
-          const gap = await fetchBlocks(network, { limit: LATEST_LIMIT });
+          const gap = await fetchBlocks(network, { limit: LATEST_FEED_LIMIT });
           setData((cur) => (cur ? { ...cur, blocks: gap } : cur));
         }
       } catch {
@@ -175,7 +174,7 @@ export function DashboardView() {
               Latest Transactions
             </h2>
             <TxIdRowHeader />
-            {Array.from({ length: LATEST_LIMIT }).map((_, i) => (
+            {Array.from({ length: LATEST_FEED_LIMIT }).map((_, i) => (
               <SkeletonRow key={i} />
             ))}
           </Card>
@@ -184,7 +183,7 @@ export function DashboardView() {
               Latest blocks
             </h2>
             <BlockRowHeader variant="feed" />
-            {Array.from({ length: LATEST_LIMIT }).map((_, i) => (
+            {Array.from({ length: LATEST_FEED_LIMIT }).map((_, i) => (
               <SkeletonRow key={i} />
             ))}
           </Card>

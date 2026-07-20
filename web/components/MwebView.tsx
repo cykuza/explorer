@@ -9,6 +9,7 @@ import { ChartSvg, type ChartSeriesPoint } from "@/components/ChartSvg";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorCard } from "@/components/ErrorCard";
 import { HashLink } from "@/components/HashLink";
+import { Hint } from "@/components/Hint";
 import { Skeleton } from "@/components/Skeleton";
 import {
   fetchCharts,
@@ -126,12 +127,10 @@ function MwebViewInner({ network }: { network: string }) {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <p
-            className="cursor-help text-xs text-text-dim underline decoration-dotted decoration-text-dim/50 underline-offset-2"
-            title="Total coins currently held inside the MWEB protocol."
-          >
-            MWEB amount
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-xs text-text-dim">MWEB amount</p>
+            <Hint content="Total coins currently held inside the MWEB protocol." />
+          </div>
           <div className="mt-1" data-testid="mweb-amount">
             <AmountCY
               value={summary.mweb_amount}
@@ -196,11 +195,9 @@ function MwebViewInner({ network }: { network: string }) {
               </dd>
             </div>
             <div>
-              <dt
-                className="cursor-help text-xs text-text-dim underline decoration-dotted decoration-text-dim/50 underline-offset-2"
-                title="Total coins currently held inside the MWEB protocol."
-              >
-                Amount
+              <dt className="flex items-center gap-1.5 text-xs text-text-dim">
+                <span>Amount</span>
+                <Hint content="Total coins currently held inside the MWEB protocol." />
               </dt>
               <dd>
                 <AmountCY value={latest.mweb_amount} />
@@ -208,11 +205,9 @@ function MwebViewInner({ network }: { network: string }) {
             </div>
             {latest.hogex_txid ? (
               <div>
-                <dt
-                  className="cursor-help text-xs text-text-dim underline decoration-dotted decoration-text-dim/50 underline-offset-2"
-                  title="Hogwarts Extension transaction that commits this block’s MWEB state to the transparent chain."
-                >
-                  HogEx
+                <dt className="flex items-center gap-1.5 text-xs text-text-dim">
+                  <span>HogEx</span>
+                  <Hint content="Hogwarts Extension transaction that commits this block’s MWEB state to the transparent chain." />
                 </dt>
                 <dd>
                   <HashLink

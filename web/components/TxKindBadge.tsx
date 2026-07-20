@@ -1,3 +1,7 @@
+"use client";
+
+import { Hint } from "@/components/Hint";
+
 type TxKindBadgeProps = {
   isHogex?: boolean | null;
   hasMweb?: boolean | null;
@@ -25,12 +29,12 @@ export function TxKindBadge({
   const hint = isHogex ? HOGEX_HINT : MWEB_HINT;
   return (
     <span
-      className={`cursor-help rounded-sm border border-surface-3 px-1.5 py-0.5 text-xs text-metal ${className}`}
+      className={`inline-flex items-center gap-1 rounded-sm border border-surface-3 px-1.5 py-0.5 text-xs text-metal ${className}`}
       data-testid={isHogex ? "tx-badge-hogex" : "tx-badge-mweb"}
-      title={hint}
       aria-label={`${label}. ${hint}`}
     >
       {label}
+      <Hint content={hint} label={`About ${label}`} />
     </span>
   );
 }

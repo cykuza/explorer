@@ -8,6 +8,7 @@ import { BlockRow, BlockRowHeader } from "@/components/BlockRow";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorCard } from "@/components/ErrorCard";
+import { Hint } from "@/components/Hint";
 import { RelativeAge } from "@/components/RelativeAge";
 import { SkeletonRow, SkeletonStat } from "@/components/Skeleton";
 import { TxIdRow, TxIdRowHeader } from "@/components/TxIdRow";
@@ -342,22 +343,23 @@ function StatCard({
 }) {
   return (
     <Card
-      href={href}
       data-testid={testId}
-      className="min-h-[4.5rem] min-w-0 overflow-hidden"
-      aria-label={`${label}: open`}
+      className="relative min-h-[4.5rem] min-w-0 overflow-hidden transition-colors hover:bg-surface-2"
     >
-      <p
-        className={`text-xs uppercase tracking-wide text-text-dim ${
-          labelHint
-            ? "cursor-help underline decoration-dotted decoration-text-dim/50 underline-offset-2"
-            : ""
-        }`}
-        title={labelHint}
-      >
-        {label}
-      </p>
-      <div className="mt-1 min-h-8 min-w-0 break-all">{children}</div>
+      <a
+        href={href}
+        className="absolute inset-0 z-0 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-metal"
+        aria-label={`${label}: open`}
+      />
+      <div className="pointer-events-none relative z-10 flex items-center gap-1.5">
+        <p className="text-xs uppercase tracking-wide text-text-dim">{label}</p>
+        {labelHint ? (
+          <Hint content={labelHint} className="pointer-events-auto" />
+        ) : null}
+      </div>
+      <div className="pointer-events-none relative z-10 mt-1 min-h-8 min-w-0 break-all">
+        {children}
+      </div>
     </Card>
   );
 }

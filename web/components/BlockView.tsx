@@ -9,6 +9,7 @@ import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorCard } from "@/components/ErrorCard";
 import { HashLink } from "@/components/HashLink";
+import { Hint } from "@/components/Hint";
 import { RelativeAge } from "@/components/RelativeAge";
 import { Skeleton } from "@/components/Skeleton";
 import { TxKindBadge } from "@/components/TxKindBadge";
@@ -276,11 +277,9 @@ function Field({
 }) {
   return (
     <div>
-      <dt
-        className={`text-xs text-text-dim ${hint ? "cursor-help underline decoration-dotted decoration-text-dim/50 underline-offset-2" : ""}`}
-        title={hint}
-      >
-        {label}
+      <dt className="flex items-center gap-1.5 text-xs text-text-dim">
+        <span>{label}</span>
+        {hint ? <Hint content={hint} /> : null}
       </dt>
       <dd className="mt-0.5 text-text">{children}</dd>
     </div>

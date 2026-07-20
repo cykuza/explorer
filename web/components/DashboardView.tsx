@@ -158,25 +158,6 @@ export function DashboardView() {
     })();
   }, [live.tip, network]);
 
-  useEffect(() => {
-    const mp = live.mempool;
-    if (!mp) {
-      return;
-    }
-    setData((cur) =>
-      cur
-        ? {
-            ...cur,
-            mempool: {
-              count: mp.count,
-              vsize: mp.vsize,
-              total_fee: cur.mempool?.total_fee ?? "0",
-            },
-          }
-        : cur,
-    );
-  }, [live.mempool]);
-
   if (loading && !data) {
     return (
       <div className="space-y-6" data-testid="dashboard-loading">

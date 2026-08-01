@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from explorer.api.app import create_app
 from explorer.api.context import NetworkContext
 from explorer.api.settings import ApiSettings, NetworkRpcConfig
-from explorer.api.sse import _active_stream_tasks
+from explorer.api.sse import HEARTBEAT_SEC, _active_stream_tasks
 from explorer.config import Settings
 from explorer.db import begin
 from explorer.indexer.apply import apply_block
@@ -26,6 +26,10 @@ from explorer.rpc import RpcClient
 from tests.test_api_app import BLOCK1, _genesis_block, _mweb_block
 
 pytestmark = pytest.mark.integration
+
+# Keepalive must stay below nginx SSE `send_timeout` (60s) and the global
+# fallback (10s) so quiet streams are not closed between heartbeats.
+assert HEARTBEAT_SEC < 10.0
 
 BLOCK2 = "cc" * 32
 COINBASE2 = "55" * 32

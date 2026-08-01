@@ -19,7 +19,10 @@ from explorer.db import connect
 
 router = APIRouter()
 
-HEARTBEAT_SEC = 15.0
+# Must stay strictly below nginx SSE location `send_timeout` (60s) and the
+# global `send_timeout` (10s) when the location override is missing — keepalive
+# bytes must arrive before nginx closes an idle client write.
+HEARTBEAT_SEC = 5.0
 
 # Tests inspect this set to assert the stream coroutine is cleaned up on disconnect.
 _active_stream_tasks: set[asyncio.Task[Any]] = set()

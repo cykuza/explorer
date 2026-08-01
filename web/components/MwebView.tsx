@@ -33,34 +33,44 @@ function MwebViewInner({ network }: { network: string }) {
   const [series, setSeries] = useState<ChartSeriesPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
+  const [chartError, setChartError] = useState<unknown>(null);
   const [showAddressHint, setShowAddressHint] = useState(false);
 
   const load = useCallback(async () => {
     await Promise.resolve();
     setLoading(true);
     setError(null);
+    setChartError(null);
     try {
       const [sum, tip] = await Promise.all([
         fetchMwebSummary(network),
         fetchTip(network),
       ]);
-      setSummary(sum);
-      const from = 0;
       const to = Math.max(tip.height, 0);
-      const pts = await fetchCharts(network, {
-        metric: "mweb_amount",
-        from,
-        to,
-      });
-      setSeries(
-        pts.map((p) => ({
-          height: p.height,
-          time: p.time,
-          value: Number(p.value),
-        })),
-      );
+      try {
+        const pts = await fetchCharts(network, {
+          metric: "mweb_amount",
+          from: 0,
+          to,
+        });
+        setSummary(sum);
+        setSeries(
+          pts.map((p) => ({
+            height: p.height,
+            time: p.time,
+            value: Number(p.value),
+          })),
+        );
+        setChartError(null);
+      } catch (err) {
+        setSummary(sum);
+        setSeries([]);
+        setChartError(err);
+      }
     } catch (err) {
       setError(err);
+      setSummary(null);
+      setSeries([]);
     } finally {
       setLoading(false);
     }
@@ -93,6 +103,9 @@ function MwebViewInner({ network }: { network: string }) {
             </Card>
           ))}
         </div>
+        <Card>
+          <Skeleton className="h-64 w-full" />
+        </Card>
       </div>
     );
   }
@@ -250,7 +263,9 @@ function MwebViewInner({ network }: { network: string }) {
         <h2 className="mb-3 font-accent text-lg text-text-bright">
           MWEB amount over height
         </h2>
-        {series.length === 0 ? (
+        {chartError ? (
+          <ErrorCard error={chartError} />
+        ) : series.length === 0 ? (
           <EmptyState
             title="No chart data"
             detail="No mweb_amount series in range."

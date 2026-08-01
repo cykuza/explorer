@@ -16,12 +16,10 @@ import {
   fetchBlock,
   fetchBlocks,
   fetchLatestTxs,
-  fetchMempool,
   fetchMwebSummary,
   fetchTip,
   type BlockSummary,
   type LatestTxItem,
-  type MempoolInfo,
   type MwebSummary,
   type TipResponse,
 } from "@/lib/api/client";
@@ -40,7 +38,6 @@ type DashState = {
   difficulty: string | null;
   blocks: BlockSummary[];
   txs: LatestTxItem[];
-  mempool: MempoolInfo | null;
   mweb: MwebSummary | null;
 };
 
@@ -61,11 +58,10 @@ export function DashboardView() {
     setLoading(true);
     setError(null);
     try {
-      const [tip, blocks, txs, mempool, mweb] = await Promise.all([
+      const [tip, blocks, txs, mweb] = await Promise.all([
         fetchTip(network),
         fetchBlocks(network, { limit: LATEST_FEED_LIMIT }),
         fetchLatestTxs(network, { limit: LATEST_FEED_LIMIT }),
-        fetchMempool(network),
         fetchMwebSummary(network),
       ]);
       setData({
@@ -73,7 +69,6 @@ export function DashboardView() {
         difficulty: null,
         blocks,
         txs,
-        mempool,
         mweb,
       });
       lastTipHeight.current = tip.height;
@@ -201,13 +196,7 @@ export function DashboardView() {
   }
 
   const tip = live.tip ?? data.tip;
-  const mempool = live.mempool
-    ? {
-        count: live.mempool.count,
-        vsize: live.mempool.vsize,
-        total_fee: data.mempool?.total_fee ?? "0",
-      }
-    : data.mempool;
+  const mempool = live.mempool;
 
   return (
     <div className="space-y-6" data-testid="dashboard">
@@ -245,12 +234,18 @@ export function DashboardView() {
           href={networkHref(network, "/mempool")}
           testId="stat-mempool"
         >
-          <span className="font-mono text-sm tabular-nums text-text-bright sm:text-lg">
-            {mempool?.count ?? 0}
-            <span className="ml-1 text-xs text-text-dim sm:text-sm">
-              / {mempool?.vsize ?? 0} vB
+          {mempool ? (
+            <span className="font-mono text-sm tabular-nums text-text-bright sm:text-lg">
+              {mempool.count}
+              <span className="ml-1 text-xs text-text-dim sm:text-sm">
+                / {mempool.vsize} vB
+              </span>
             </span>
-          </span>
+          ) : (
+            <span className="font-mono text-sm tabular-nums text-text-dim sm:text-lg">
+              —
+            </span>
+          )}
         </StatCard>
         <StatCard
           label="MWEB"

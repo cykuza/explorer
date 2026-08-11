@@ -2,7 +2,7 @@
 name = "explorer"
 version = "0.1.0"
 description = "Cyberyen Explorer backend (indexer + API)"
-readme = "../README.md"
+readme = "README.md"
 requires-python = ">=3.14,<3.15"
 dependencies = [
     "httpx>=0.28",

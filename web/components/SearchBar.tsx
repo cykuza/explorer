@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useId, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { ApiError, searchEntity } from "@/lib/api/client";
@@ -16,6 +16,7 @@ export function SearchBar() {
   const router = useRouter();
   const pathname = usePathname() || "/";
   const network = activeNetworkFromPathname(pathname);
+  const errorId = useId();
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -52,7 +53,9 @@ export function SearchBar() {
     <div className="min-w-0 flex-1">
       <form
         onSubmit={onSubmit}
-        className="flex h-9 items-stretch border border-surface-3 bg-surface-1"
+        className={`flex h-9 items-stretch border bg-surface-1 ${
+          error ? "border-metal" : "border-surface-3"
+        }`}
         role="search"
       >
         <label htmlFor="explorer-search" className="sr-only">
@@ -73,8 +76,20 @@ export function SearchBar() {
           placeholder="Block / tx / address"
           autoComplete="off"
           spellCheck={false}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : undefined}
           className="min-w-0 flex-1 border-0 bg-transparent px-3 font-mono text-sm leading-none text-text placeholder:text-text-mute focus:outline-none"
         />
+        {error ? (
+          <span
+            id={errorId}
+            role="alert"
+            title={error}
+            className="inline-flex max-w-[9rem] shrink-0 items-center border-l border-surface-3 px-2 font-mono text-xs leading-none text-metal truncate"
+          >
+            {error}
+          </span>
+        ) : null}
         <button
           type="submit"
           disabled={pending || !query.trim()}
@@ -86,11 +101,6 @@ export function SearchBar() {
           Search
         </button>
       </form>
-      {error ? (
-        <p className="mt-1 text-xs text-text-dim" role="status">
-          {error}
-        </p>
-      ) : null}
     </div>
   );
 }
